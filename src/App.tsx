@@ -9,10 +9,10 @@ import { ChatWindow } from './components/ChatWindow';
 import { RunLocallyModal } from './components/RunLocallyModal';
 
 export default function App() {
-  // Load agents from storage or use default 4 agents with updated flexible prompts
+  // Load agents from storage or use default 4 agents with updated flexible prompts & live market grounding
   const [agents, setAgents] = useState<AgentConfig[]>(() => {
     try {
-      const saved = localStorage.getItem('openbots_agents_v10_flexible_prompts');
+      const saved = localStorage.getItem('openbots_agents_v11_live_market_grounding');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.some(a => a.id === 'vex' || a.id === 'byte')) {
@@ -56,7 +56,7 @@ export default function App() {
   // Persist agents
   useEffect(() => {
     try {
-      localStorage.setItem('openbots_agents_v10_flexible_prompts', JSON.stringify(agents));
+      localStorage.setItem('openbots_agents_v11_live_market_grounding', JSON.stringify(agents));
     } catch (e) {
       console.warn('Could not save agents to localStorage', e);
     }
