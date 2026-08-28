@@ -132,25 +132,21 @@ export default function App() {
       try {
         data = rawText ? JSON.parse(rawText) : {};
       } catch (parseErr) {
-        if (!response.ok) {
-          throw new Error(`Server returned HTTP ${response.status}. The service is initializing or busy. Please try again.`);
-        }
-        data = { reply: rawText || 'Agent responded successfully.' };
+        data = { reply: rawText };
       }
 
-      if (!response.ok) {
-        let message = data.error || `Server returned status ${response.status}. Try again.`;
-        if (data.details) {
-          message += `\n\n💡 ${data.details}`;
-        }
-        throw new Error(message);
+      // If we got a reply (from xAI, Gemini, or Autonomous engine), use it
+      const replyText = data.reply || (data.error ? `${data.error}${data.details ? `\n\n💡 ${data.details}` : ''}` : rawText);
+
+      if (!replyText && !response.ok) {
+        throw new Error(`Server returned HTTP ${response.status}. Please check Vercel Logs.`);
       }
 
       const agentMsg: ChatMessage = {
         id: `agent-${Date.now()}`,
         sender: 'agent',
         agentId,
-        text: data.reply || 'No response returned by agent.',
+        text: replyText || 'Agent responded.',
         timestamp: Date.now(),
         toolsUsed: data.toolsUsed
       };

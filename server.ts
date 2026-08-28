@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import { processChat, getApiKeys } from './src/lib/chatEngine';
+import { processChat, getApiKeys } from './api/chat';
 
 dotenv.config();
 
