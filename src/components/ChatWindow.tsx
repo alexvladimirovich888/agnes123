@@ -6,7 +6,6 @@ import ReactMarkdown from 'react-markdown';
 import {
   X,
   Send,
-  Sparkles,
   RotateCcw,
   Sliders,
   Copy,
@@ -14,8 +13,7 @@ import {
   Cpu,
   AlertCircle,
   Terminal,
-  Activity,
-  ArrowUpRight
+  Activity
 } from 'lucide-react';
 
 interface ChatWindowProps {
@@ -184,7 +182,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </p>
 
             {/* Specialties Badges */}
-            <div className="flex flex-wrap gap-2 justify-center mb-8">
+            <div className="flex flex-wrap gap-2 justify-center">
               {agent.specialties.map((spec, idx) => (
                 <span
                   key={idx}
@@ -193,29 +191,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   {spec}
                 </span>
               ))}
-            </div>
-
-            {/* Quick Starter Prompts */}
-            <div className="w-full text-left">
-              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-zinc-400" />
-                <span>Suggested Operational Directives:</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {agent.samplePrompts.map((sample, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setInputText(sample);
-                      textareaRef.current?.focus();
-                    }}
-                    className="p-3 rounded-md bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-700 text-left text-xs text-zinc-300 transition-all flex items-center justify-between group"
-                  >
-                    <span>{sample}</span>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors shrink-0 ml-2" />
-                  </button>
-                ))}
-              </div>
             </div>
           </motion.div>
         )}
