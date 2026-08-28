@@ -9,18 +9,19 @@ import { ChatWindow } from './components/ChatWindow';
 import { RunLocallyModal } from './components/RunLocallyModal';
 
 export default function App() {
-  // Load agents from storage or use default 4 agents
+  // Load agents from storage or use default 4 agents with updated flexible prompts
   const [agents, setAgents] = useState<AgentConfig[]>(() => {
     try {
-      const saved = localStorage.getItem('openbots_agents_v9_uploaded_assets');
+      const saved = localStorage.getItem('openbots_agents_v10_flexible_prompts');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.some(a => a.id === 'vex' || a.id === 'byte')) {
-          // Merge avatarUrl if missing
+          // Merge with latest systemPrompt & avatarUrl
           return parsed.map((p: AgentConfig) => {
             const init = INITIAL_AGENTS.find(a => a.id === p.id);
             return {
               ...p,
+              systemPrompt: init?.systemPrompt || p.systemPrompt,
               avatarUrl: init?.avatarUrl || p.avatarUrl
             };
           });
@@ -55,7 +56,7 @@ export default function App() {
   // Persist agents
   useEffect(() => {
     try {
-      localStorage.setItem('openbots_agents_v9_uploaded_assets', JSON.stringify(agents));
+      localStorage.setItem('openbots_agents_v10_flexible_prompts', JSON.stringify(agents));
     } catch (e) {
       console.warn('Could not save agents to localStorage', e);
     }
