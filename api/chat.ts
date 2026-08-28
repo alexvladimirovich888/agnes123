@@ -1,4 +1,4 @@
-import { processChat } from '../src/lib/chatEngine.ts';
+import { processChat } from '../src/lib/chatEngine';
 
 // Vercel Serverless Function Handler for /api/chat
 export default async function handler(req: any, res: any) {

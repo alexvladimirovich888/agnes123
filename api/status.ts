@@ -1,4 +1,4 @@
-import { getApiKeys } from '../src/lib/chatEngine.ts';
+import { getApiKeys } from '../src/lib/chatEngine';
 
 // Vercel Serverless Function Handler for /api/status
 export default async function handler(req: any, res: any) {

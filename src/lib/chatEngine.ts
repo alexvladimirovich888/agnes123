@@ -247,62 +247,73 @@ function generateAutonomousFallback(payload: ChatRequestPayload): string {
 
 // Core execution handler used by both Express server and Vercel Serverless Functions
 export async function processChat(payload: ChatRequestPayload): Promise<ChatResponsePayload> {
-  const { systemPrompt, customPrompt, messages } = payload;
+  try {
+    const { systemPrompt, customPrompt, messages } = payload;
 
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return { error: 'Messages array is required' };
-  }
-
-  let fullSystemPrompt = systemPrompt || 'You are an AI agent on the OpenBots platform.';
-  if (customPrompt && customPrompt.trim()) {
-    fullSystemPrompt += `\n\nUSER CUSTOM SYSTEM INSTRUCTIONS:\n${customPrompt.trim()}`;
-  }
-
-  const { xaiKey, geminiKey, xaiModel } = getApiKeys();
-  let xaiError = '';
-  let geminiError = '';
-
-  // 1. Try xAI Grok if key is available
-  if (xaiKey) {
-    try {
-      const res = await callXai(xaiKey, xaiModel, fullSystemPrompt, messages);
-      return {
-        reply: res.reply,
-        model: res.model,
-        provider: 'xai'
-      };
-    } catch (err: any) {
-      xaiError = err.message || String(err);
-      console.error('[xAI Grok Failure]', xaiError);
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return { error: 'Messages array is required' };
     }
-  } else {
-    xaiError = 'XAI_API_KEY is not configured in environment variables.';
-  }
 
-  // 2. Fallback to Gemini if key is available
-  if (geminiKey) {
-    try {
-      const res = await callGemini(geminiKey, fullSystemPrompt, messages);
-      return {
-        reply: res.reply,
-        model: res.model,
-        provider: 'gemini'
-      };
-    } catch (err: any) {
-      geminiError = err.message || String(err);
-      console.error('[Gemini Fallback Failure]', geminiError);
+    let fullSystemPrompt = systemPrompt || 'You are an AI agent on the OpenBots platform.';
+    if (customPrompt && customPrompt.trim()) {
+      fullSystemPrompt += `\n\nUSER CUSTOM SYSTEM INSTRUCTIONS:\n${customPrompt.trim()}`;
     }
-  } else {
-    geminiError = 'GEMINI_API_KEY is not configured in environment variables.';
-  }
 
-  // 3. Resilient autonomous fallback response
-  const fallbackReply = generateAutonomousFallback(payload);
-  return {
-    reply: fallbackReply,
-    model: 'OpenBots Autonomous Engine',
-    provider: 'local-fallback',
-    details: `${xaiError} | ${geminiError}`
-  };
+    const { xaiKey, geminiKey, xaiModel } = getApiKeys();
+    let xaiError = '';
+    let geminiError = '';
+
+    // 1. Try xAI Grok if key is available
+    if (xaiKey) {
+      try {
+        const res = await callXai(xaiKey, xaiModel, fullSystemPrompt, messages);
+        return {
+          reply: res.reply,
+          model: res.model,
+          provider: 'xai'
+        };
+      } catch (err: any) {
+        xaiError = err.message || String(err);
+        console.error('[xAI Grok Failure]', xaiError);
+      }
+    } else {
+      xaiError = 'XAI_API_KEY is not configured in environment variables.';
+    }
+
+    // 2. Fallback to Gemini if key is available
+    if (geminiKey) {
+      try {
+        const res = await callGemini(geminiKey, fullSystemPrompt, messages);
+        return {
+          reply: res.reply,
+          model: res.model,
+          provider: 'gemini'
+        };
+      } catch (err: any) {
+        geminiError = err.message || String(err);
+        console.error('[Gemini Fallback Failure]', geminiError);
+      }
+    } else {
+      geminiError = 'GEMINI_API_KEY is not configured in environment variables.';
+    }
+
+    // 3. Resilient autonomous fallback response
+    const fallbackReply = generateAutonomousFallback(payload);
+    return {
+      reply: fallbackReply,
+      model: 'OpenBots Autonomous Engine',
+      provider: 'local-fallback',
+      details: `${xaiError} | ${geminiError}`
+    };
+  } catch (outerErr: any) {
+    console.error('[ChatEngine] Unexpected error in processChat:', outerErr);
+    const fallbackReply = generateAutonomousFallback(payload || { messages: [] });
+    return {
+      reply: fallbackReply,
+      model: 'OpenBots Autonomous Engine',
+      provider: 'local-fallback',
+      details: outerErr?.message || String(outerErr)
+    };
+  }
 }
 
