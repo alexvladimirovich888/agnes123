@@ -16,6 +16,7 @@ export interface ChatRequestPayload {
 
 export interface ChatResponsePayload {
   reply?: string;
+  toolsUsed?: AgentToolAction[];
   model?: string;
   provider?: string;
   error?: string;
@@ -188,14 +189,181 @@ async function callXai(
   throw new Error(`xAI API returned status ${lastStatus || 500}: ${lastErrorText || 'Failed to get response'}`);
 }
 
-// Call Anthropic Messages API (Claude) using native REST fetch
-async function callAnthropic(
-  apiKey: string,
-  model: string,
-  fullSystemPrompt: string,
-  messages: ChatMessagePayload[]
-): Promise<{ reply: string; model: string }> {
-  // Messages must start with a user turn and alternate roles: merge consecutive turns of the same role
+// ---------------------------------------------------------------------------
+// Anthropic Claude agent loop with tools
+//   server tools (run by Anthropic): web_search, web_fetch, code_execution sandbox
+//   custom tool (run here):          http_request — GET public APIs, detects x402 payment requests
+// ---------------------------------------------------------------------------
+
+export interface AgentToolAction {
+  id: string;
+  name: string;
+  status: 'running' | 'completed' | 'failed';
+  detail?: string;
+}
+
+const ANTHROPIC_BETAS = 'web-fetch-2025-09-10,code-execution-2025-08-25';
+const MAX_AGENT_STEPS = 8;
+
+const AGENT_TOOLS = [
+  { type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
+  { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 5 },
+  { type: 'code_execution_20250825', name: 'code_execution' },
+  {
+    name: 'http_request',
+    description:
+      'Call a public HTTP/JSON API with GET or HEAD and return status, headers and body (first 20 KB). ' +
+      'Use it for REST APIs (prices, weather, blockchain explorers, GitHub, etc.). ' +
+      'If the endpoint answers 402 Payment Required (x402 protocol), the result lists the payment options (amount, asset, network, recipient); ' +
+      'payments are NOT executed automatically — report the price to the user instead.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'Absolute http(s) URL, including query string.' },
+        method: { type: 'string', enum: ['GET', 'HEAD'], description: 'Defaults to GET.' },
+        headers: { type: 'object', additionalProperties: { type: 'string' }, description: 'Optional request headers, e.g. Accept.' },
+      },
+      required: ['url'],
+    },
+  },
+];
+
+export const AGENT_CAPABILITIES_PROMPT = `
+
+### TOOLS YOU CAN USE
+You are an agent, not just a chat model. Use tools whenever they make the answer better or more current:
+- web_search: search the live web (news, prices not in the snapshot, documentation, people, events).
+- web_fetch: open and read a specific web page or document by URL.
+- code_execution: an isolated sandbox with bash and Python — run code, do exact calculations, analyse data, produce and test scripts.
+- http_request: call public REST/JSON APIs directly (GET/HEAD). It recognises x402 "402 Payment Required" responses and returns the price; you cannot pay automatically, so tell the user what it would cost.
+Rules: prefer tools over guessing for anything current or numeric; cite the sources you used briefly; never invent data a tool did not return; keep the final answer in the user's language.`;
+
+/* ---------- SSRF-safe http_request ---------- */
+
+function isPrivateIp(ip: string): boolean {
+  if (ip.includes(':')) {
+    const v = ip.toLowerCase();
+    return v === '::1' || v === '::' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe80') || v.startsWith('::ffff:127.') || v.startsWith('::ffff:10.') || v.startsWith('::ffff:192.168.');
+  }
+  const [a, b] = ip.split('.').map(Number);
+  return (
+    a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224
+  );
+}
+
+async function assertPublicUrl(raw: string): Promise<URL> {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error('Invalid URL');
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Only http and https URLs are allowed');
+  const host = url.hostname.replace(/^\[|\]$/g, '');
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) throw new Error('Private hosts are not allowed');
+  const dns = await import('node:dns');
+  const addrs = await dns.promises.lookup(host, { all: true });
+  if (!addrs.length || addrs.some((a) => isPrivateIp(a.address))) throw new Error('Private network addresses are not allowed');
+  return url;
+}
+
+export function parseX402(status: number, headers: Headers, bodyText: string) {
+  if (status !== 402) return null;
+  let requirements: any = null;
+  try {
+    requirements = JSON.parse(bodyText);
+  } catch {
+    /* not JSON */
+  }
+  const headerReq = headers.get('payment-required') || headers.get('x-payment-required');
+  if (!requirements && headerReq) {
+    try {
+      requirements = JSON.parse(Buffer.from(headerReq, 'base64').toString('utf8'));
+    } catch {
+      requirements = headerReq;
+    }
+  }
+  const accepts = Array.isArray(requirements?.accepts) ? requirements.accepts : [];
+  return {
+    protocol: 'x402',
+    version: requirements?.x402Version ?? null,
+    options: accepts.map((o: any) => ({
+      scheme: o.scheme,
+      network: o.network,
+      amount: o.maxAmountRequired ?? o.amount,
+      asset: o.asset,
+      payTo: o.payTo,
+      description: o.description,
+      resource: o.resource,
+    })),
+    raw: accepts.length ? undefined : requirements,
+    note: 'Payment was not executed. Automatic payments are disabled.',
+  };
+}
+
+export async function runHttpRequest(input: any): Promise<{ content: string; isError: boolean; detail: string; x402: boolean }> {
+  const method = input?.method === 'HEAD' ? 'HEAD' : 'GET';
+  try {
+    const url = await assertPublicUrl(String(input?.url || ''));
+    const headers: Record<string, string> = { 'user-agent': 'OpenBots-Agent/1.0', accept: 'application/json, text/plain;q=0.9, */*;q=0.5' };
+    if (input?.headers && typeof input.headers === 'object') {
+      for (const [k, v] of Object.entries(input.headers)) {
+        if (typeof v === 'string' && !/^(host|cookie|authorization)$/i.test(k)) headers[k] = v;
+      }
+    }
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 15000);
+    let res: Response;
+    try {
+      res = await fetch(url, { method, headers, redirect: 'manual', signal: controller.signal });
+    } finally {
+      clearTimeout(t);
+    }
+    let body = '';
+    if (method !== 'HEAD') {
+      const buf = Buffer.from(await res.arrayBuffer());
+      body = buf.subarray(0, 20000).toString('utf8') + (buf.length > 20000 ? '\n…[truncated]' : '');
+    }
+    const x402 = parseX402(res.status, res.headers, body);
+    const pickHeaders = ['content-type', 'location', 'retry-after', 'x-ratelimit-remaining'];
+    const result = {
+      status: res.status,
+      headers: Object.fromEntries(pickHeaders.map((h) => [h, res.headers.get(h)]).filter(([, v]) => v)),
+      ...(x402 ? { x402 } : { body }),
+    };
+    return {
+      content: JSON.stringify(result),
+      isError: false,
+      detail: `${method} ${url.host}${url.pathname} → ${res.status}${x402 ? ' (x402 payment required)' : ''}`,
+      x402: !!x402,
+    };
+  } catch (err: any) {
+    return { content: `Request failed: ${err?.message || String(err)}`, isError: true, detail: `${method} ${input?.url || ''} failed`, x402: false };
+  }
+}
+
+/* ---------- Agent loop ---------- */
+
+function describeServerTool(block: any): { name: string; detail: string } {
+  const input = block.input || {};
+  switch (block.name) {
+    case 'web_search':
+      return { name: 'Web search', detail: String(input.query || '') };
+    case 'web_fetch':
+      return { name: 'Read page', detail: String(input.url || '') };
+    case 'bash_code_execution':
+      return { name: 'Sandbox', detail: String(input.command || '').slice(0, 140) };
+    case 'text_editor_code_execution':
+      return { name: 'Sandbox file', detail: `${input.command || 'edit'} ${input.path || ''}`.trim() };
+    case 'code_execution':
+      return { name: 'Sandbox', detail: String(input.code || '').split('\n')[0].slice(0, 140) };
+    default:
+      return { name: block.name || 'Tool', detail: '' };
+  }
+}
+
+function toAnthropicTurns(messages: { role: string; content: string }[]) {
   const turns: { role: 'user' | 'assistant'; content: string }[] = [];
   for (const m of messages) {
     const content = (m.content || '').trim();
@@ -207,41 +375,106 @@ async function callAnthropic(
   }
   while (turns.length && turns[0].role !== 'user') turns.shift();
   if (turns.length === 0) turns.push({ role: 'user', content: 'Hello' });
+  return turns;
+}
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 55000);
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 4096,
-        system: fullSystemPrompt,
-        messages: turns,
-      }),
-      signal: controller.signal,
-    });
+export async function runClaudeAgent(
+  apiKey: string,
+  model: string,
+  system: string,
+  history: { role: string; content: string }[],
+  deadlineMs = 100000
+): Promise<{ reply: string; model: string; toolsUsed: AgentToolAction[] }> {
+  const started = Date.now();
+  const convo: any[] = toAnthropicTurns(history);
+  const toolsUsed: AgentToolAction[] = [];
+  let container: string | undefined;
+  let usedModel = model;
+  let textOut = '';
 
-    const data = (await res.json().catch(() => ({}))) as any;
-    if (!res.ok) {
-      const msg = data?.error?.message || `HTTP ${res.status}`;
-      throw new Error(`Anthropic API error (${res.status}): ${msg}`);
+  for (let step = 0; step < MAX_AGENT_STEPS; step++) {
+    const remaining = deadlineMs - (Date.now() - started);
+    if (remaining < 5000) break;
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), remaining);
+    let data: any;
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-beta': ANTHROPIC_BETAS,
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 8000,
+          system,
+          tools: AGENT_TOOLS,
+          messages: convo,
+          ...(container ? { container } : {}),
+        }),
+        signal: controller.signal,
+      });
+      data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(`Anthropic API error (${res.status}): ${data?.error?.message || 'request failed'}`);
+    } finally {
+      clearTimeout(t);
     }
-    const reply = (data.content || [])
-      .filter((b: any) => b?.type === 'text' && typeof b.text === 'string')
-      .map((b: any) => b.text)
-      .join('\n')
-      .trim();
-    if (!reply) throw new Error('Anthropic API returned an empty response');
-    return { reply, model: data.model || model };
-  } finally {
-    clearTimeout(timeoutId);
+
+    usedModel = data.model || usedModel;
+    if (data.container?.id) container = data.container.id;
+    const content: any[] = Array.isArray(data.content) ? data.content : [];
+
+    // Track tools that ran on Anthropic's side
+    for (const b of content) {
+      if (b.type === 'server_tool_use') {
+        const d = describeServerTool(b);
+        toolsUsed.push({ id: b.id, name: d.name, status: 'completed', detail: d.detail });
+      } else if (typeof b.type === 'string' && b.type.endsWith('_tool_result') && b.content?.type?.endsWith('_error')) {
+        const t = toolsUsed.find((x) => x.id === b.tool_use_id);
+        if (t) t.status = 'failed';
+      }
+    }
+
+    // Final answer = text after the last tool block (drops "let me search…" narration)
+    let lastTool = -1;
+    content.forEach((b, i) => {
+      if (b.type !== 'text' && b.type !== 'thinking' && b.type !== 'redacted_thinking') lastTool = i;
+    });
+    const tail = content.slice(lastTool + 1).filter((b) => b.type === 'text').map((b) => b.text).join('');
+    const text = tail.trim() ? tail : content.filter((b) => b.type === 'text').map((b) => b.text).join('\n\n');
+    if (text.trim()) textOut = text;
+
+    if (data.stop_reason === 'pause_turn') {
+      convo.push({ role: 'assistant', content });
+      continue;
+    }
+
+    if (data.stop_reason === 'tool_use') {
+      convo.push({ role: 'assistant', content });
+      const results: any[] = [];
+      for (const b of content) {
+        if (b.type !== 'tool_use') continue;
+        if (b.name === 'http_request') {
+          const r = await runHttpRequest(b.input);
+          toolsUsed.push({ id: b.id, name: r.x402 ? 'x402 payment request' : 'API call', status: r.isError ? 'failed' : 'completed', detail: r.detail });
+          results.push({ type: 'tool_result', tool_use_id: b.id, content: r.content, is_error: r.isError });
+        } else {
+          results.push({ type: 'tool_result', tool_use_id: b.id, content: `Unknown tool ${b.name}`, is_error: true });
+        }
+      }
+      convo.push({ role: 'user', content: results });
+      continue;
+    }
+
+    break; // end_turn / max_tokens / refusal
   }
+
+  const reply = textOut.trim();
+  if (!reply) throw new Error('Agent finished without a text answer');
+  return { reply, model: usedModel, toolsUsed };
 }
 
 // Call Google Gemini API using native REST fetch
@@ -348,11 +581,12 @@ CRITICAL RULES FOR RESPONDING:
     // 0. Primary: Anthropic Claude
     if (anthropicKey) {
       try {
-        const res = await callAnthropic(anthropicKey, anthropicModel, fullSystemPrompt, messages);
+        const res = await runClaudeAgent(anthropicKey, anthropicModel, fullSystemPrompt + AGENT_CAPABILITIES_PROMPT, messages);
         return {
           reply: res.reply,
           model: res.model,
-          provider: 'anthropic'
+          provider: 'anthropic',
+          toolsUsed: res.toolsUsed
         };
       } catch (err: any) {
         anthropicError = err.message || String(err);

@@ -3,7 +3,9 @@ import { motion } from 'motion/react';
 import { AgentConfig, ChatMessage } from '../types';
 import { AgentAvatar } from './AgentAvatar';
 import ReactMarkdown from 'react-markdown';
-import { X, ArrowUp, RotateCcw, Copy, Check, AlertCircle, Terminal } from 'lucide-react';
+import remarkGfm from 'remark-gfm';
+import { X, ArrowUp, RotateCcw, Copy, Check, AlertCircle, Terminal, Search, Globe, Plug, Coins, Wrench } from 'lucide-react';
+import type { ToolAction } from '../types';
 import { paletteFor } from '../lib/palette';
 import { hasWebGL, WebGLBoundary } from './three/support';
 import type { AgentMood } from './three/AgentFigure';
@@ -46,6 +48,48 @@ function useAgentMood(messages: ChatMessage[], isLoading: boolean): AgentMood {
   if (burst) return burst.error ? 'error' : 'talking';
   return 'idle';
 }
+
+
+const toolIcon = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.includes('search')) return Search;
+  if (n.includes('page')) return Globe;
+  if (n.includes('sandbox')) return Terminal;
+  if (n.includes('x402')) return Coins;
+  if (n.includes('api')) return Plug;
+  return Wrench;
+};
+
+const ToolTrail: React.FC<{ tools: ToolAction[]; glow: string }> = ({ tools, glow }) => {
+  const [open, setOpen] = useState(false);
+  if (!tools.length) return null;
+  const shown = open ? tools : tools.slice(0, 3);
+  return (
+    <div className="mb-3 flex flex-col gap-1.5">
+      {shown.map((t) => {
+        const Icon = toolIcon(t.name);
+        return (
+          <div key={t.id} className="flex items-center gap-2 min-w-0 text-[12px]">
+            <span
+              className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center"
+              style={{ background: `${glow}14`, color: t.status === 'failed' ? '#fda4af' : glow }}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </span>
+            <span className="shrink-0 text-fg-2">{t.name}</span>
+            {t.detail && <span className="truncate text-fg-3 font-mono text-[11.5px]">{t.detail}</span>}
+            {t.status === 'failed' && <span className="shrink-0 text-rose-300">failed</span>}
+          </div>
+        );
+      })}
+      {tools.length > 3 && (
+        <button type="button" onClick={() => setOpen(!open)} className="self-start text-[11.5px] text-fg-3 hover:text-fg-2 pl-8">
+          {open ? 'Show fewer steps' : `Show all ${tools.length} steps`}
+        </button>
+      )}
+    </div>
+  );
+};
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   agent,
@@ -261,6 +305,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                           </button>
                         </div>
 
+                        {!msg.error && msg.toolsUsed && msg.toolsUsed.length > 0 && <ToolTrail tools={msg.toolsUsed} glow={palette.glow} />}
                         {msg.error ? (
                           <div className="flex items-start gap-2 text-[14px] text-rose-200">
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -269,6 +314,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                         ) : (
                           <div className="agent-md text-[14.5px] leading-[1.65] text-fg/90 break-words">
                             <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
                               components={{
                                 code({ node, className, children, ...props }) {
                                   const match = /language-(\w+)/.exec(className || '');

@@ -166,7 +166,7 @@
 .agent-md strong { color: #fff; font-weight: 600; }
 .agent-md a { color: var(--agent-text); text-decoration: underline; text-underline-offset: 3px; }
 .agent-md h1, .agent-md h2, .agent-md h3 { font-size: 0.98rem; font-weight: 600; margin: 0.9em 0 0.4em; color: #fff; }
-.agent-md table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 0.85rem; }
+.agent-md table { display: block; overflow-x: auto; width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 0.85rem; }
 .agent-md th, .agent-md td { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 6px 8px; text-align: left; }
 .agent-md blockquote { border-left: 2px solid var(--agent-glow); padding-left: 12px; color: var(--color-fg-2); margin: 0.6em 0; }
 
