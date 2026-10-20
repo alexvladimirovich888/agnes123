@@ -240,13 +240,13 @@ function generateAutonomousFallback(payload: ChatRequestPayload, liveMarketInfo?
 
   switch (agentId) {
     case 'vex':
-      return `**[VEX — Режим рыночной аналитики]**\n\nЗапрос: *"${lastUserMsg}"*\n\n${marketNote}\n\n1. **Анализ ликвидности**: Текущие валютные и криптопары демонстрируют стабильную активность. При планировании конвертации или хеджирования учитывайте спред и волатильность.\n2. **Управление рисками**: Сохраняйте диверсификацию между твердой валютой, золотом и ликвидными инструментами.\n\n*(OpenBots Autonomous Engine | Для подключения live-генерации grok-4.6 проверьте XAI_API_KEY в Vercel)*`;
+      return `**[PLUTUS — Режим рыночной аналитики]**\n\nЗапрос: *"${lastUserMsg}"*\n\n${marketNote}\n\n1. **Анализ ликвидности**: Текущие валютные и криптопары демонстрируют стабильную активность. При планировании конвертации или хеджирования учитывайте спред и волатильность.\n2. **Управление рисками**: Сохраняйте диверсификацию между твердой валютой, золотом и ликвидными инструментами.\n\n*(OpenBots Autonomous Engine | Для подключения live-генерации grok-4.6 проверьте XAI_API_KEY в Vercel)*`;
     
     case 'byte':
-      return `**[BYTE — Код и автоматизация]**\n\nЗадача: *"${lastUserMsg}"*\n\n\`\`\`typescript\n// Автоматический скрипт запроса курса валют\nasync function getUsdRubRate() {\n  const res = await fetch('https://open.er-api.com/v6/latest/USD');\n  const data = await res.json();\n  console.log(\`USD/RUB: \${data.rates.RUB}\`);\n  return data.rates.RUB;\n}\n\`\`\`\n${marketNote}\n\nСкрипт готов к внедрению в любой сервис или Telegram-бот.`;
+      return `**[HEPHAESTUS — Код и автоматизация]**\n\nЗадача: *"${lastUserMsg}"*\n\n\`\`\`typescript\n// Автоматический скрипт запроса курса валют\nasync function getUsdRubRate() {\n  const res = await fetch('https://open.er-api.com/v6/latest/USD');\n  const data = await res.json();\n  console.log(\`USD/RUB: \${data.rates.RUB}\`);\n  return data.rates.RUB;\n}\n\`\`\`\n${marketNote}\n\nСкрипт готов к внедрению в любой сервис или Telegram-бот.`;
 
     case 'pulse':
-      return `**[PULSE — Исследования и мониторинг]**\n\nМониторинг инфополя по запросу: *"${lastUserMsg}"*\n\n- **Сигнал**: Высокий интерес пользователей к валютным колебаниям и макроэкономическим новостям.\n- **Медиа-фон**: В соцсетях и аналитических каналах ключевыми драйверами остаются процентные ставки и торговые балансы.\n${marketNote}`;
+      return `**[HERMES — Исследования и мониторинг]**\n\nМониторинг инфополя по запросу: *"${lastUserMsg}"*\n\n- **Сигнал**: Высокий интерес пользователей к валютным колебаниям и макроэкономическим новостям.\n- **Медиа-фон**: В соцсетях и аналитических каналах ключевыми драйверами остаются процентные ставки и торговые балансы.\n${marketNote}`;
 
     case 'morph':
     default:

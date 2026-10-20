@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { AgentConfig } from '../types';
 import { AgentNode } from './AgentNode';
+import { hasWebGL, WebGLBoundary } from './three/support';
+
+const AgentStage = lazy(() => import('./three/AgentStage').then((m) => ({ default: m.AgentStage })));
 
 interface AgentConstellationProps {
   agents: AgentConfig[];
   onSelectAgent: (agent: AgentConfig, initialPrompt?: string) => void;
+  paused?: boolean;
 }
 
-export const AgentConstellation: React.FC<AgentConstellationProps> = ({
-  agents,
-  onSelectAgent,
-}) => {
+export const AgentConstellation: React.FC<AgentConstellationProps> = ({ agents, onSelectAgent, paused = false }) => {
   const [activeSpeech, setActiveSpeech] = useState<{
     agentId: string;
     text: string;
@@ -53,23 +54,36 @@ export const AgentConstellation: React.FC<AgentConstellationProps> = ({
     };
   }, [agents]);
 
-  return (
-    <section id="agents-canvas" className="relative py-4 sm:py-6 flex-1 flex items-center justify-center">
-      {/* Organic Spatial Grid Layout (2-col grid with comfortable spacing on 1 screen) */}
+  const fallback = (
+    <div className="absolute inset-0 flex items-center justify-center">
       <div className="max-w-4xl w-full mx-auto px-6 sm:px-12">
-        <div className="grid grid-cols-2 gap-y-10 sm:gap-y-12 gap-x-12 sm:gap-x-28 md:gap-x-36 justify-items-center">
-          {agents.map((agent) => (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-10 justify-items-center">
+          {agents.map((agent, i) => (
             <AgentNode
               key={agent.id}
               agent={agent}
+              side={i % 2 === 0 ? 'right' : 'left'}
               currentSpeech={activeSpeech?.agentId === agent.id ? activeSpeech.text : null}
               onSelect={onSelectAgent}
             />
           ))}
         </div>
       </div>
+    </div>
+  );
+
+  return (
+    <section id="agents-canvas" className="relative flex-1 min-h-[360px]" aria-label="Agents">
+      <div className="stage-floor" />
+      {hasWebGL() ? (
+        <WebGLBoundary fallback={fallback}>
+          <Suspense fallback={null}>
+            <AgentStage agents={agents} speech={activeSpeech} onSelect={onSelectAgent} paused={paused} />
+          </Suspense>
+        </WebGLBoundary>
+      ) : (
+        fallback
+      )}
     </section>
   );
 };
-
-

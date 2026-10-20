@@ -1,20 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { AgentConfig, ChatMessage, ToolAction } from '../types';
+import React, { useState, useRef, useEffect, useLayoutEffect, Suspense, lazy } from 'react';
+import { motion } from 'motion/react';
+import { AgentConfig, ChatMessage } from '../types';
 import { AgentAvatar } from './AgentAvatar';
 import ReactMarkdown from 'react-markdown';
-import {
-  X,
-  Send,
-  RotateCcw,
-  Sliders,
-  Copy,
-  Check,
-  Cpu,
-  AlertCircle,
-  Terminal,
-  Activity
-} from 'lucide-react';
+import { X, ArrowUp, RotateCcw, Copy, Check, AlertCircle, Terminal } from 'lucide-react';
+import { paletteFor } from '../lib/palette';
+import { hasWebGL, WebGLBoundary } from './three/support';
+import type { AgentMood } from './three/AgentFigure';
+
+const ChatAgentStage = lazy(() => import('./three/ChatAgentStage').then((m) => ({ default: m.ChatAgentStage })));
 
 interface ChatWindowProps {
   agent: AgentConfig;
@@ -24,6 +18,33 @@ interface ChatWindowProps {
   onSendMessage: (text: string) => void;
   onClose: () => void;
   onClearHistory: () => void;
+}
+
+const MOOD_LABEL: Record<AgentMood, string> = {
+  idle: 'Ready',
+  attention: 'Ready',
+  speaking: 'Answering',
+  talking: 'Answering',
+  thinking: 'Thinking',
+  error: 'Request failed',
+};
+
+/** Derives the 3D agent's mood from chat state: thinking while waiting, talking right after a reply. */
+function useAgentMood(messages: ChatMessage[], isLoading: boolean): AgentMood {
+  const last = messages[messages.length - 1];
+  const firstSeenId = useRef(last?.id);
+  const [burst, setBurst] = useState<{ id: string; error: boolean } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!last || last.sender !== 'agent' || last.id === firstSeenId.current) return;
+    setBurst({ id: last.id, error: !!last.error });
+    const t = window.setTimeout(() => setBurst(null), last.error ? 1400 : 3400);
+    return () => window.clearTimeout(t);
+  }, [last?.id]);
+
+  if (isLoading) return 'thinking';
+  if (burst) return burst.error ? 'error' : 'talking';
+  return 'idle';
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -39,6 +60,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const palette = paletteFor(agent);
+  const mood = useAgentMood(messages, isLoading);
+  const webgl = hasWebGL();
 
   // If initialPrompt was passed, optionally focus or send
   useEffect(() => {
@@ -50,6 +74,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // Auto-scroll to bottom of conversation
   useEffect(() => {
+    if (messages.length === 0 && !isLoading) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
@@ -85,320 +110,268 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const cssVars = { ['--agent-glow' as any]: palette.glow, ['--agent-text' as any]: palette.text } as React.CSSProperties;
+  const statusColor = mood === 'error' ? '#ff6b6b' : mood === 'idle' ? '#4ade80' : palette.glow;
+
+  const avatarFallback = (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <AgentAvatar type={agent.avatarType} avatarUrl={agent.avatarUrl} size="xl" isHovered alt={agent.name} />
+    </div>
+  );
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6 bg-black/70 backdrop-blur-md"
       onClick={onClose}
     >
       <motion.div
-        layoutId={`agent-card-${agent.id}`}
         id={`chat-window-${agent.id}`}
-        initial={{ opacity: 0, scale: 0.92, y: 15 }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Chat with ${agent.name}`}
+        initial={{ opacity: 0, scale: 0.96, y: 18 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.92, y: 15 }}
-        transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+        exit={{ opacity: 0, scale: 0.96, y: 18 }}
+        transition={{ type: 'spring', stiffness: 340, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl sm:max-w-3xl h-[85vh] max-h-[640px] flex flex-col rounded-xl bg-[#09090b] border border-zinc-800 shadow-2xl overflow-hidden"
+        style={cssVars}
+        className="relative w-full max-w-[1100px] h-full sm:h-[min(88vh,800px)] flex flex-col md:flex-row sm:rounded-[28px] overflow-hidden border border-white/[0.08] bg-ink shadow-[0_40px_120px_-30px_rgba(0,0,0,0.9)]"
       >
-        {/* Subtle ambient light */}
-        <div className="absolute top-0 right-1/4 w-72 h-72 bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
-
-        {/* Chat Window Header */}
-        <div className="relative z-10 flex items-center justify-between px-5 py-3.5 border-b border-zinc-800 bg-[#09090b]">
-          <div className="flex items-center gap-3">
-            <div className="scale-90">
-              <AgentAvatar
-                type={agent.avatarType}
-                avatarUrl={agent.avatarUrl}
-                accentColor={agent.accentColor}
-                size="sm"
-                alt={agent.name}
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-white">
-                  {agent.name}
-                </h2>
-                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[9px] font-mono tracking-widest uppercase text-zinc-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Agnes 2.5 Pro Core
-                </span>
-              </div>
-              <p className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase mt-0.5">
-                {agent.role}
-              </p>
-            </div>
-          </div>
-
-          {/* Header Action Buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClearHistory}
-              className="p-1.5 rounded-sm bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
-              title="Clear Conversation"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-sm bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
-              title="Close (Esc)"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-30 flex items-center gap-1.5">
+          <button
+            onClick={onClearHistory}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.06] text-fg-2 hover:text-fg transition-colors"
+            title="Clear conversation"
+            aria-label="Clear conversation"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.06] text-fg-2 hover:text-fg transition-colors"
+            title="Close (Esc)"
+            aria-label="Close chat"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-      {/* Messages Scroll Area */}
-      <div className="relative z-10 flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6">
-        {/* If no messages yet, show introductory briefing card */}
-        {messages.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="max-w-2xl mx-auto my-8 p-6 sm:p-8 rounded-xl bg-zinc-950 border border-zinc-850 text-center flex flex-col items-center"
-          >
-            <div className="mb-4">
-              <AgentAvatar
-                type={agent.avatarType}
-                avatarUrl={agent.avatarUrl}
-                accentColor={agent.accentColor}
-                size="lg"
-                isHovered={true}
-                alt={agent.name}
-              />
-            </div>
-            
-            <h3 className="text-lg font-light tracking-tight text-white mb-2">
-              {agent.personality.greeting}
-            </h3>
-            
-            <p className="text-xs text-zinc-400 leading-relaxed max-w-lg mb-6 font-light">
-              {agent.description}
-            </p>
+        {/* ---------- Agent stage ---------- */}
+        <aside className="relative shrink-0 h-[150px] md:h-auto md:w-[320px] overflow-hidden md:border-r border-b md:border-b-0 border-white/[0.06]">
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(70% 55% at 50% 62%, ${palette.glow}26, transparent 70%), linear-gradient(180deg, #15171d 0%, #0e0f13 100%)`,
+            }}
+          />
+          <div className="absolute top-0 bottom-0 right-14 left-[42%] md:right-0 md:left-0 md:top-6 md:bottom-[150px]">
+            {webgl ? (
+              <WebGLBoundary fallback={avatarFallback}>
+                <Suspense fallback={avatarFallback}>
+                  <ChatAgentStage agent={agent} mood={mood} />
+                </Suspense>
+              </WebGLBoundary>
+            ) : (
+              avatarFallback
+            )}
+          </div>
 
-            {/* Specialties Badges */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              {agent.specialties.map((spec, idx) => (
-                <span
-                  key={idx}
-                  className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-[10px] font-mono uppercase tracking-widest text-zinc-400"
-                >
-                  {spec}
-                </span>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Render Conversation Stream */}
-        {messages.map((msg) => {
-          const isUser = msg.sender === 'user';
-          const isAgent = msg.sender === 'agent';
-
-          const accentTextColor = 
-            agent.accentColor === 'amber' ? 'text-amber-400' :
-            agent.accentColor === 'emerald' ? 'text-emerald-400' :
-            agent.accentColor === 'purple' ? 'text-purple-400' :
-            agent.accentColor === 'cyan' ? 'text-cyan-400' : 'text-blue-400';
-
-          return (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-              className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-            >
-              {/* Agent Message Container (Telegram incoming message layout) */}
-              {isAgent && (
-                <div className="flex items-start gap-2.5 sm:gap-3 max-w-2xl sm:max-w-3xl group">
-                  {/* Clean Agent Avatar next to response */}
-                  <div className="shrink-0 pt-0.5">
-                    <AgentAvatar
-                      type={agent.avatarType}
-                      avatarUrl={agent.avatarUrl}
-                      size="sm"
-                      alt={agent.name}
-                    />
-                  </div>
-
-                  {/* Telegram-style incoming message bubble */}
-                  <div
-                    className={`rounded-2xl rounded-tl-sm p-3.5 sm:p-4.5 relative shadow-lg ${
-                      msg.error
-                        ? 'bg-rose-950/40 border border-rose-800/80 text-rose-200'
-                        : 'bg-[#18222d] border border-[#223140] text-zinc-200'
-                    }`}
-                  >
-                    {/* Header with Agent Name & Copy Action */}
-                    <div className="flex items-center justify-between gap-4 mb-2 pb-1.5 border-b border-zinc-700/30">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold tracking-wide ${accentTextColor}`}>
-                          {agent.name}
-                        </span>
-                        <span className="text-[10px] text-zinc-400/80 font-normal">
-                          {agent.role}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => copyToClipboard(msg.text, msg.id)}
-                          className="p-1 rounded hover:bg-zinc-700/40 text-zinc-400 hover:text-white transition-colors"
-                          title="Copy message"
-                        >
-                          {copiedId === msg.id ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Message Body */}
-                    {msg.error ? (
-                      <div className="flex items-center gap-2 text-sm text-rose-300">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{msg.text}</span>
-                      </div>
-                    ) : (
-                      <div className="text-sm leading-relaxed space-y-2.5 prose prose-invert max-w-none text-zinc-200">
-                        <ReactMarkdown
-                          components={{
-                            code({ node, className, children, ...props }) {
-                              const match = /language-(\w+)/.exec(className || '');
-                              const isInline = !match && !String(children).includes('\n');
-                              return !isInline ? (
-                                <div className="my-2.5 rounded-lg overflow-hidden border border-zinc-700/60 bg-[#0f141c]">
-                                  <div className="flex items-center justify-between px-3 py-1.5 bg-[#141b24] border-b border-zinc-700/50 text-[10px] font-mono uppercase tracking-widest text-zinc-400">
-                                    <span className="flex items-center gap-1.5">
-                                      <Terminal className="w-3 h-3 text-zinc-400" />
-                                      {match ? match[1] : 'code'}
-                                    </span>
-                                    <button
-                                      onClick={() => copyToClipboard(String(children), `code-${Math.random()}`)}
-                                      className="hover:text-white text-[10px] uppercase tracking-wider transition-colors"
-                                    >
-                                      Copy
-                                    </button>
-                                  </div>
-                                  <pre className="p-3.5 overflow-x-auto text-xs font-mono text-zinc-200 leading-relaxed">
-                                    <code>{children}</code>
-                                  </pre>
-                                </div>
-                              ) : (
-                                <code className="px-1.5 py-0.5 rounded bg-[#223140] text-zinc-100 text-xs font-mono" {...props}>
-                                  {children}
-                                </code>
-                              );
-                            }
-                          }}
-                        >
-                          {msg.text}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-
-                    {/* Telegram-style Timestamp footer */}
-                    <div className="flex items-center justify-end gap-1 mt-1.5 -mb-1 text-[10px] font-mono text-zinc-400/70">
-                      <span>
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* User Outgoing Message (Telegram outgoing bubble) */}
-              {isUser && (
-                <div className="max-w-xl sm:max-w-2xl rounded-2xl rounded-tr-sm px-4 py-3 bg-[#2b5278] border border-[#376694]/60 text-white shadow-md">
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-50">
-                    {msg.text}
-                  </p>
-                  <div className="flex items-center justify-end gap-1 mt-1 text-[10px] font-mono text-blue-200/70">
-                    <span>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          );
-        })}
-
-        {/* Loading Indicator (Telegram-style typing state with Agent Avatar) */}
-        {isLoading && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2.5 sm:gap-3"
-          >
-            <div className="shrink-0 pt-0.5">
-              <AgentAvatar
-                type={agent.avatarType}
-                avatarUrl={agent.avatarUrl}
-                size="sm"
-                alt={agent.name}
-              />
-            </div>
-            <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-[#18222d] border border-[#223140] flex items-center gap-3 shadow-lg">
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-              <span className="text-xs font-mono text-zinc-300">
-                {agent.name} is typing...
+          <div className="absolute left-5 bottom-5 md:left-6 md:right-6 md:bottom-6">
+            <h2 className="font-display text-[22px] md:text-[26px] font-semibold tracking-[0.02em] text-fg leading-none">{agent.name}</h2>
+            <p className="text-[12.5px] text-fg-2 mt-1.5">{agent.role}</p>
+            <div className="mt-3 inline-flex items-center gap-2 h-7 px-3 rounded-full bg-white/[0.05] border border-white/[0.07] text-[12px] text-fg" aria-live="polite">
+              <span className="relative flex w-2 h-2">
+                {mood !== 'idle' && <span className="absolute inset-0 rounded-full animate-ping opacity-70" style={{ background: statusColor }} />}
+                <span className="relative w-2 h-2 rounded-full" style={{ background: statusColor }} />
               </span>
+              {MOOD_LABEL[mood]}
             </div>
-          </motion.div>
-        )}
+            <p className="hidden md:block mt-4 text-[11.5px] text-fg-3">Agnes 2.5 Pro core</p>
+          </div>
+        </aside>
 
-        <div ref={messagesEndRef} />
-      </div>
+        {/* ---------- Conversation ---------- */}
+        <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-8 pt-6 md:pt-16 pb-6 space-y-5">
+            {messages.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="max-w-xl mx-auto pt-6 sm:pt-14"
+              >
+                <p className="font-display text-[18px] sm:text-[26px] font-medium tracking-[-0.02em] leading-[1.2] text-fg">
+                  {agent.personality.greeting}
+                </p>
+                <p className="mt-4 text-[14px] text-fg-2 leading-relaxed">{agent.description}</p>
 
-      {/* Chat Input Bar */}
-      <div className="relative z-10 p-4 sm:p-6 border-t border-zinc-800 bg-[#09090b]">
-        <div className="max-w-4xl mx-auto">
-          
-          {/* Input Form */}
-          <div className="relative flex items-end gap-2 p-2 rounded-lg bg-zinc-950 border border-zinc-800 focus-within:border-zinc-600 transition-colors shadow-inner">
-            <textarea
-              ref={textareaRef}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={`Instruct ${agent.name} or describe a task... (Enter to send, Shift+Enter for new line)`}
-              rows={1}
-              className="flex-1 bg-transparent border-0 text-sm text-zinc-200 placeholder:text-zinc-600 focus:ring-0 focus:outline-none resize-none max-h-36 py-2 px-3 leading-relaxed font-sans"
-              style={{ minHeight: '40px' }}
-            />
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {agent.specialties.map((spec, idx) => (
+                    <span
+                      key={idx}
+                      className="text-[12px] px-2.5 py-1 rounded-full"
+                      style={{ color: palette.text, background: `${palette.glow}12`, border: `1px solid ${palette.glow}24` }}
+                    >
+                      {spec}
+                    </span>
+                  ))}
+                </div>
 
-            <button
-              onClick={handleSend}
-              disabled={!inputText.trim() || isLoading}
-              className="text-[10px] uppercase tracking-widest px-3.5 py-2.5 bg-white hover:bg-zinc-200 disabled:opacity-30 disabled:hover:bg-white text-black font-semibold rounded-sm transition-all shadow-sm active:scale-95 shrink-0 flex items-center gap-1.5"
-              title="Send Message"
+              </motion.div>
+            )}
+
+            {messages.map((msg) => {
+              const isUser = msg.sender === 'user';
+              const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+                >
+                  {!isUser && (
+                    <div className="flex items-start gap-3 max-w-[min(100%,46rem)] group">
+                      <div className="shrink-0 pt-0.5">
+                        <AgentAvatar type={agent.avatarType} avatarUrl={agent.avatarUrl} size="sm" alt={agent.name} />
+                      </div>
+
+                      <div
+                        className={`min-w-0 rounded-[20px] rounded-tl-md px-4 py-3.5 sm:px-5 sm:py-4 ${
+                          msg.error ? 'bg-rose-950/40 border border-rose-500/30 text-rose-100' : 'bg-ink-2 border border-white/[0.06] text-fg'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-4 mb-1.5">
+                          <span className="font-display text-[12px] font-semibold tracking-[0.06em]" style={{ color: msg.error ? '#fda4af' : palette.text }}>
+                            {agent.name}
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(msg.text, msg.id)}
+                            className="p-1 -m-1 rounded-md text-fg-3 hover:text-fg opacity-60 group-hover:opacity-100 transition"
+                            title="Copy message"
+                            aria-label="Copy message"
+                          >
+                            {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+
+                        {msg.error ? (
+                          <div className="flex items-start gap-2 text-[14px] text-rose-200">
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span className="whitespace-pre-wrap">{msg.text}</span>
+                          </div>
+                        ) : (
+                          <div className="agent-md text-[14.5px] leading-[1.65] text-fg/90 break-words">
+                            <ReactMarkdown
+                              components={{
+                                code({ node, className, children, ...props }) {
+                                  const match = /language-(\w+)/.exec(className || '');
+                                  const isInline = !match && !String(children).includes('\n');
+                                  return !isInline ? (
+                                    <div className="my-3 rounded-xl overflow-hidden border border-white/[0.07] bg-[#0a0b0e]">
+                                      <div className="flex items-center justify-between px-3.5 py-2 border-b border-white/[0.06] text-[11.5px] text-fg-3">
+                                        <span className="flex items-center gap-1.5">
+                                          <Terminal className="w-3.5 h-3.5" />
+                                          {match ? match[1] : 'code'}
+                                        </span>
+                                        <button
+                                          onClick={() => copyToClipboard(String(children), `code-${Math.random()}`)}
+                                          className="hover:text-fg transition-colors"
+                                        >
+                                          Copy
+                                        </button>
+                                      </div>
+                                      <pre className="p-4 overflow-x-auto text-[12.5px] font-mono text-fg/90 leading-relaxed">
+                                        <code>{children}</code>
+                                      </pre>
+                                    </div>
+                                  ) : (
+                                    <code className="px-1.5 py-0.5 rounded-md bg-white/[0.07] text-fg text-[0.86em] font-mono" {...props}>
+                                      {children}
+                                    </code>
+                                  );
+                                },
+                              }}
+                            >
+                              {msg.text}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+
+                        <div className="mt-2 text-right text-[11px] text-fg-3">{time}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {isUser && (
+                    <div className="max-w-[min(85%,36rem)] rounded-[20px] rounded-tr-md px-4 py-3 bg-fg text-ink">
+                      <p className="whitespace-pre-wrap text-[14.5px] leading-relaxed">{msg.text}</p>
+                      <div className="mt-1 text-right text-[11px] text-ink/50">{time}</div>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+
+            {isLoading && (
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3">
+                <div className="shrink-0 pt-0.5">
+                  <AgentAvatar type={agent.avatarType} avatarUrl={agent.avatarUrl} size="sm" alt={agent.name} />
+                </div>
+                <div className="px-4 py-3 rounded-[20px] rounded-tl-md bg-ink-2 border border-white/[0.06] flex items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <span className="think-dot" />
+                    <span className="think-dot" />
+                    <span className="think-dot" />
+                  </span>
+                  <span className="text-[13px] text-fg-2">{agent.name} is thinking</span>
+                </div>
+              </motion.div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* ---------- Composer ---------- */}
+          <div className="px-3 sm:px-8 pb-3 sm:pb-6 pt-2">
+            <div
+              className="flex items-end gap-2 p-2 pl-4 rounded-[22px] bg-ink-2 border border-white/[0.08] focus-within:border-white/20 transition-colors"
+              style={{ boxShadow: `0 0 40px -18px ${palette.glow}55` }}
             >
-              <Send className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Send</span>
-            </button>
+              <textarea
+                ref={textareaRef}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`Message ${agent.name}…`}
+                rows={1}
+                className="flex-1 bg-transparent border-0 text-[15px] text-fg placeholder:text-fg-3 focus:ring-0 focus:outline-none resize-none max-h-40 py-2.5 leading-relaxed"
+                style={{ minHeight: '44px' }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={!inputText.trim() || isLoading}
+                className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-ink transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110"
+                style={{ background: palette.glow }}
+                title="Send message"
+                aria-label="Send message"
+              >
+                <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="hidden sm:flex items-center justify-between mt-2.5 px-2 text-[11.5px] text-fg-3">
+              <span>Enter to send, Shift + Enter for a new line</span>
+              <span>OpenBots, powered by Agnes 2.5 Pro</span>
+            </div>
           </div>
-
-          <div className="flex items-center justify-between mt-2 px-1 text-[10px] font-mono tracking-widest uppercase text-zinc-600">
-            <span>OpenBots · Powered by Agnes 2.5 Pro</span>
-            <span>Esc to return to canvas</span>
-          </div>
-
         </div>
-      </div>
+      </motion.div>
     </motion.div>
-  </div>
   );
 };

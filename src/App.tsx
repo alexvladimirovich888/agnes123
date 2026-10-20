@@ -16,13 +16,14 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.some(a => a.id === 'vex' || a.id === 'byte')) {
-          // Merge with latest systemPrompt & avatarUrl
+          // Merge with latest agent definitions (names, prompts, avatars); keep only the user's custom prompt from cache
           return parsed.map((p: AgentConfig) => {
             const init = INITIAL_AGENTS.find(a => a.id === p.id);
+            if (!init) return p;
             return {
               ...p,
-              systemPrompt: init?.systemPrompt || p.systemPrompt,
-              avatarUrl: init?.avatarUrl || p.avatarUrl
+              ...init,
+              customPrompt: p.customPrompt ?? init.customPrompt
             };
           });
         }
@@ -178,30 +179,38 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-full bg-[#07080a] text-[#e1e4ea] bg-grid-pattern selection:bg-cyan-500/20 selection:text-cyan-200 flex flex-col font-sans overflow-hidden justify-between">
-      
-      {/* Top Minimal Navigation */}
+    <div className="relative h-[100dvh] w-full bg-ink text-fg flex flex-col font-sans overflow-hidden">
+      <div className="aurora" aria-hidden />
+      <div className="grain" aria-hidden />
+
+      {/* Top navigation */}
       <Navbar
         onOpenRunLocally={() => setIsRunLocallyOpen(true)}
       />
 
-      {/* Main Single-Screen Content Area */}
-      <main className="flex-1 flex flex-col justify-center gap-6 sm:gap-8 py-2 sm:py-4 overflow-visible">
-        
-        {/* Minimal Hero Section */}
+      <main className="relative flex-1 min-h-0 flex flex-col">
+        {/* Hero */}
         <Hero
           onOpenRunLocally={() => setIsRunLocallyOpen(true)}
         />
 
-        {/* The 4 Living Agents Constellation with Interactive Hover Cards */}
+        {/* The 4 living agents, rendered as an interactive 3D stage */}
         <AgentConstellation
           agents={agents}
           onSelectAgent={handleSelectAgent}
+          paused={!!selectedAgent}
         />
-
       </main>
 
-      {/* Expanded Chat Transformation Window (Comfortably centered, non-fullscreen) */}
+      <footer className="relative z-10 shrink-0 h-10 sm:h-12 px-4 sm:px-8 flex items-center justify-between text-[11.5px] text-fg-3">
+        <span>Open source. Runs locally or in the browser.</span>
+        <span className="hidden sm:flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+          {agents.length} agents online
+        </span>
+      </footer>
+
+      {/* Chat window */}
       <AnimatePresence>
         {selectedAgent && (
           <ChatWindow
@@ -224,8 +233,6 @@ export default function App() {
         isOpen={isRunLocallyOpen}
         onClose={() => setIsRunLocallyOpen(false)}
       />
-
     </div>
   );
 }
-
