@@ -6,9 +6,6 @@
 
 **Four AI agents that search the web, read pages, run code in a sandbox and call APIs.<br/>Use them in the browser or run the whole stack on your own machine.**
 
-[![CI](https://github.com/alexvladimirovich888/agnes123/actions/workflows/ci.yml/badge.svg)](https://github.com/alexvladimirovich888/agnes123/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/alexvladimirovich888/agnes123/actions/workflows/codeql.yml/badge.svg)](https://github.com/alexvladimirovich888/agnes123/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/alexvladimirovich888/agnes123/badge)](https://scorecard.dev/viewer/?uri=github.com/alexvladimirovich888/agnes123)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3d7eaa.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%E2%89%A520-61a535.svg)](.nvmrc)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6.svg)](tsconfig.json)
