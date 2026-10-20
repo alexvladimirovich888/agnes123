@@ -16,7 +16,10 @@ function getApiKeys() {
   const anthropicKey = (process.env.ANTHROPIC_API_KEY || '').trim() || null;
   const anthropicModel = (process.env.ANTHROPIC_MODEL || '').trim() || 'claude-haiku-5-5';
 
-  return { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel };
+  const localBaseUrl = (process.env.LOCAL_MODEL_BASE_URL || '').trim() || null;
+  const localModel = (process.env.LOCAL_MODEL_NAME || '').trim() || 'llama3.1';
+
+  return { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel, localBaseUrl, localModel };
 }
 
 export default async function handler(req: any, res: any) {
@@ -28,7 +31,7 @@ export default async function handler(req: any, res: any) {
     return res.status(200).end();
   }
 
-  const { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel } = getApiKeys();
+  const { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel, localBaseUrl, localModel } = getApiKeys();
 
   return res.status(200).json({
     status: 'online',
@@ -39,5 +42,7 @@ export default async function handler(req: any, res: any) {
     hasGeminiKey: !!geminiKey,
     anthropicModel,
     hasAnthropicKey: !!anthropicKey,
+    localModel: localBaseUrl ? localModel : null,
+    hasLocalModel: !!localBaseUrl,
   });
 }

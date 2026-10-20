@@ -28,7 +28,8 @@ export const CameraRig: React.FC<{ target: [number, number, number]; strength?: 
   base,
   strength = 0.8,
 }) => {
-  const look = React.useMemo(() => new THREE.Vector3(...target), [target[0], target[1], target[2]]);
+  const [tx, ty, tz] = target;
+  const look = React.useMemo(() => new THREE.Vector3(tx, ty, tz), [tx, ty, tz]);
   useFrame((state, dt) => {
     const cam = state.camera;
     cam.position.x = THREE.MathUtils.damp(cam.position.x, base[0] + state.pointer.x * strength, 2.5, dt);

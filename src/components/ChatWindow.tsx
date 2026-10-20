@@ -42,6 +42,8 @@ function useAgentMood(messages: ChatMessage[], isLoading: boolean): AgentMood {
     setBurst({ id: last.id, error: !!last.error });
     const t = window.setTimeout(() => setBurst(null), last.error ? 1400 : 3400);
     return () => window.clearTimeout(t);
+    // Re-run only when a new message arrives, not on every re-render of the same message
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [last?.id]);
 
   if (isLoading) return 'thinking';
@@ -114,6 +116,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       onSendMessage(initialPrompt.trim());
       setInputText('');
     }
+    // Send the prompt from the hover card exactly once when the chat opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt]);
 
   // Auto-scroll to bottom of conversation
@@ -316,7 +320,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
-                                code({ node, className, children, ...props }) {
+                                code({ node: _node, className, children, ...props }) {
                                   const match = /language-(\w+)/.exec(className || '');
                                   const isInline = !match && !String(children).includes('\n');
                                   return !isInline ? (

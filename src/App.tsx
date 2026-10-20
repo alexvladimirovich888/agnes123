@@ -10,7 +10,7 @@ import { RunLocallyModal } from './components/RunLocallyModal';
 
 export default function App() {
   // Load agents from storage or use default 4 agents with updated flexible prompts & live market grounding
-  const [agents, setAgents] = useState<AgentConfig[]>(() => {
+  const [agents] = useState<AgentConfig[]>(() => {
     try {
       const saved = localStorage.getItem('openbots_agents_v11_live_market_grounding');
       if (saved) {

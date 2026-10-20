@@ -1,0 +1,41 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Hosted site
+        - Local (Node.js)
+        - Local (Docker)
+        - Local model (Ollama / LM Studio / other)
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      options: [PLUTUS, HEPHAESTUS, HERMES, PROTEUS, Not agent-specific]
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Ask …
+        3. See …
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Browser, OS, Node.js version, and the output of /api/status (it contains no secrets).
+      render: text

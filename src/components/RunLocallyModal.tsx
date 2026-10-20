@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Copy, Check, Github, ChevronDown, Terminal, Container, CircleCheck } from 'lucide-react';
+import { X, Copy, Check, Github, ChevronDown, Terminal, Container, CircleCheck, Cpu } from 'lucide-react';
 import { REPO_URL, X_URL } from '../lib/links';
 
 interface RunLocallyModalProps {
@@ -8,7 +8,7 @@ interface RunLocallyModalProps {
   onClose: () => void;
 }
 
-type Runtime = 'node' | 'docker';
+type Runtime = 'node' | 'docker' | 'local';
 type Platform = 'unix' | 'windows';
 
 interface Step {
@@ -43,6 +43,35 @@ function buildSteps(runtime: Runtime, platform: Platform): Step[] {
     ),
     code: win ? 'Copy-Item .env.example .env\nnotepad .env' : 'cp .env.example .env\nnano .env',
   };
+
+  if (runtime === 'local') {
+    return [
+      {
+        title: 'Install a local model runtime',
+        body: (
+          <>
+            Download Ollama from <Code>ollama.com</Code> and pull an open-weight model. LM Studio, vLLM and llama.cpp work too:
+            any server with an OpenAI-compatible API.
+          </>
+        ),
+        code: 'ollama pull llama3.1',
+      },
+      clone,
+      { title: 'Install dependencies', code: 'npm ci' },
+      {
+        title: 'Point OpenBots at your model',
+        body: <>No cloud keys needed. Conversations stay on your machine.</>,
+        code: win
+          ? 'Copy-Item .env.example .env\nAdd-Content .env "LOCAL_MODEL_BASE_URL=http://localhost:11434/v1"\nAdd-Content .env "LOCAL_MODEL_NAME=llama3.1"'
+          : "cp .env.example .env\necho 'LOCAL_MODEL_BASE_URL=http://localhost:11434/v1' >> .env\necho 'LOCAL_MODEL_NAME=llama3.1' >> .env",
+      },
+      {
+        title: 'Start the server',
+        body: <>Open <Code>http://localhost:3000</Code>. All four agents now answer from your local model.</>,
+        code: 'npm run dev',
+      },
+    ];
+  }
 
   if (runtime === 'node') {
     return [
@@ -256,6 +285,7 @@ export const RunLocallyModal: React.FC<RunLocallyModalProps> = ({ isOpen, onClos
                   options={[
                     { value: 'node', label: 'Node.js', icon: <Terminal className="w-3.5 h-3.5" /> },
                     { value: 'docker', label: 'Docker', icon: <Container className="w-3.5 h-3.5" /> },
+                    { value: 'local', label: 'Local model', icon: <Cpu className="w-3.5 h-3.5" /> },
                   ]}
                 />
                 <Segmented
@@ -273,7 +303,14 @@ export const RunLocallyModal: React.FC<RunLocallyModalProps> = ({ isOpen, onClos
             {/* Body */}
             <div className="relative flex-1 min-h-0 overflow-y-auto px-5 sm:px-8 py-6">
               <dl className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.07] mb-7">
-                {(runtime === 'node'
+                {(runtime === 'local'
+                  ? [
+                      { k: 'Runtime', v: 'Node.js 20 + Ollama' },
+                      { k: 'Memory', v: '8 GB+ RAM' },
+                      { k: 'Disk', v: '~6 GB with a model' },
+                      { k: 'OS', v: 'macOS, Linux, Windows' },
+                    ]
+                  : runtime === 'node'
                   ? [
                       { k: 'Runtime', v: 'Node.js 20 LTS' },
                       { k: 'Tools', v: 'Git, npm' },

@@ -13,7 +13,7 @@ app.use(express.json());
 
 // Health & Status endpoint
 app.get('/api/status', (req: Request, res: Response) => {
-  const { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel } = getApiKeys();
+  const { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel, localBaseUrl, localModel } = getApiKeys();
   res.json({
     status: 'online',
     platform: 'OpenBots',
@@ -24,6 +24,8 @@ app.get('/api/status', (req: Request, res: Response) => {
     hasGeminiKey: !!geminiKey,
     anthropicModel,
     hasAnthropicKey: !!anthropicKey,
+    localModel: localBaseUrl ? localModel : null,
+    hasLocalModel: !!localBaseUrl,
   });
 });
 

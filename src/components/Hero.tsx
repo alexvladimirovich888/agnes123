@@ -1,5 +1,5 @@
 import React from 'react';
-import { REPO_URL, X_URL } from '../lib/links';
+import { REPO_URL } from '../lib/links';
 import { motion } from 'motion/react';
 import { Terminal, Github } from 'lucide-react';
 

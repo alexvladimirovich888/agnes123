@@ -46,7 +46,7 @@ const Scene: React.FC<SceneProps> = ({ agents, speech, onSelect, hovered, setHov
     const scale = Math.min(1.3, (vp.width * 0.94) / w, (vp.height * 0.94) / (top - bottom));
     const offsetY = LOOK_TARGET[1] - ((top + bottom) / 2) * scale;
     return { pos, scale, offsetY };
-  }, [agents, n, narrow, viewport, camera, size.width, size.height]);
+  }, [agents, n, narrow, viewport, camera]);
 
   return (
     <group position={[0, layout.offsetY, 0]} scale={layout.scale}>

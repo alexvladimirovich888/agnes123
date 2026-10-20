@@ -41,7 +41,53 @@ export function getApiKeys() {
   const anthropicKey = rawAnthropic !== '' ? rawAnthropic : null;
   const anthropicModel = (process.env.ANTHROPIC_MODEL || '').trim() || 'claude-haiku-5-5';
 
-  return { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel };
+  // Local / self-hosted open-weight model via any OpenAI-compatible server (Ollama, LM Studio, vLLM, llama.cpp)
+  const localBaseUrl = (process.env.LOCAL_MODEL_BASE_URL || '').trim().replace(/\/+$/, '') || null;
+  const localModel = (process.env.LOCAL_MODEL_NAME || '').trim() || 'llama3.1';
+  const localApiKey = (process.env.LOCAL_MODEL_API_KEY || '').trim() || null;
+
+  return { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel, localBaseUrl, localModel, localApiKey };
+}
+
+// Call a local/self-hosted model through the OpenAI-compatible /chat/completions endpoint
+export async function callLocalModel(
+  baseUrl: string,
+  model: string,
+  apiKey: string | null,
+  fullSystemPrompt: string,
+  messages: ChatMessagePayload[],
+  timeoutMs = 90000
+): Promise<{ reply: string; model: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.7,
+        stream: false,
+        messages: [
+          { role: 'system', content: fullSystemPrompt },
+          ...messages
+            .filter((m) => m.content && m.content.trim())
+            .map((m) => ({ role: m.role === 'agent' || m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+        ],
+      }),
+      signal: controller.signal,
+    });
+    const data = (await res.json().catch(() => ({}))) as any;
+    if (!res.ok) throw new Error(`Local model error (${res.status}): ${data?.error?.message || data?.error || 'request failed'}`);
+    const reply = data?.choices?.[0]?.message?.content;
+    if (!reply || typeof reply !== 'string') throw new Error('Local model returned an empty response');
+    return { reply: reply.trim(), model: data.model || model };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // Helper: fetch live currency and crypto market snapshot to ground all agent responses
@@ -240,7 +286,7 @@ Rules: prefer tools over guessing for anything current or numeric; cite the sour
 
 /* ---------- SSRF-safe http_request ---------- */
 
-function isPrivateIp(ip: string): boolean {
+export function isPrivateIp(ip: string): boolean {
   if (ip.includes(':')) {
     const v = ip.toLowerCase();
     return v === '::1' || v === '::' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe80') || v.startsWith('::ffff:127.') || v.startsWith('::ffff:10.') || v.startsWith('::ffff:192.168.');
@@ -252,7 +298,7 @@ function isPrivateIp(ip: string): boolean {
   );
 }
 
-async function assertPublicUrl(raw: string): Promise<URL> {
+export async function assertPublicUrl(raw: string): Promise<URL> {
   let url: URL;
   try {
     url = new URL(raw);
@@ -262,6 +308,11 @@ async function assertPublicUrl(raw: string): Promise<URL> {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Only http and https URLs are allowed');
   const host = url.hostname.replace(/^\[|\]$/g, '');
   if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) throw new Error('Private hosts are not allowed');
+  const net = await import('node:net');
+  if (net.isIP(host)) {
+    if (isPrivateIp(host)) throw new Error('Private network addresses are not allowed');
+    return url;
+  }
   const dns = await import('node:dns');
   const addrs = await dns.promises.lookup(host, { all: true });
   if (!addrs.length || addrs.some((a) => isPrivateIp(a.address))) throw new Error('Private network addresses are not allowed');
@@ -363,7 +414,7 @@ function describeServerTool(block: any): { name: string; detail: string } {
   }
 }
 
-function toAnthropicTurns(messages: { role: string; content: string }[]) {
+export function toAnthropicTurns(messages: { role: string; content: string }[]) {
   const turns: { role: 'user' | 'assistant'; content: string }[] = [];
   for (const m of messages) {
     const content = (m.content || '').trim();
@@ -573,8 +624,9 @@ CRITICAL RULES FOR RESPONDING:
 2. If asked for currency rates (e.g. USD/RUB, EUR/USD, crypto, etc.), ALWAYS provide the exact current numbers from the live snapshot above or your latest knowledge base.
 3. Be confident, precise, and immediately helpful on all questions regarding prices, rates, world events, and general facts.`;
 
-    const { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel } = getApiKeys();
+    const { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel, localBaseUrl, localModel, localApiKey } = getApiKeys();
     let anthropicError = '';
+    let localError = '';
     let xaiError = '';
     let geminiError = '';
 
@@ -594,6 +646,17 @@ CRITICAL RULES FOR RESPONDING:
       }
     } else {
       anthropicError = 'ANTHROPIC_API_KEY is not configured.';
+    }
+
+    // 0b. Local open-weight model (Ollama, LM Studio, vLLM, llama.cpp)
+    if (localBaseUrl) {
+      try {
+        const res = await callLocalModel(localBaseUrl, localModel, localApiKey, fullSystemPrompt, messages);
+        return { reply: res.reply, model: res.model, provider: 'local' };
+      } catch (err: any) {
+        localError = err.message || String(err);
+        console.error('[Local model failure]', localError);
+      }
     }
 
     // 1. Try xAI Grok
@@ -636,7 +699,7 @@ CRITICAL RULES FOR RESPONDING:
       reply: fallbackReply,
       model: 'OpenBots Autonomous Engine',
       provider: 'local-fallback',
-      details: `${anthropicError} | ${xaiError} | ${geminiError}`
+      details: [anthropicError, localError, xaiError, geminiError].filter(Boolean).join(' | ')
     };
   } catch (outerErr: any) {
     const fallbackReply = generateAutonomousFallback(payload || { messages: [] });

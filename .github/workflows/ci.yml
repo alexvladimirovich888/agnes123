@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck, test, build (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+      - name: Smoke test production server
+        run: |
+          NODE_ENV=production node dist/server.cjs &
+          for i in $(seq 1 20); do curl -fsS http://localhost:3000/api/status && break; sleep 1; done
+          curl -fsS http://localhost:3000/ | grep -q '<div id="root">'
+          curl -fsS -X POST http://localhost:3000/api/chat \
+            -H 'content-type: application/json' \
+            -d '{"agentId":"byte","agentName":"HEPHAESTUS","systemPrompt":"test","messages":[{"role":"user","content":"hi"}]}' \
+            | grep -q '"reply"'
+      - name: Upload coverage
+        if: matrix.node == 22
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/lcov.info
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t openbots:ci .
+      - name: Run container and check health
+        run: |
+          docker run -d --name openbots -p 3000:3000 openbots:ci
+          for i in $(seq 1 30); do curl -fsS http://localhost:3000/api/status && exit 0; sleep 1; done
+          docker logs openbots; exit 1
