@@ -1,4 +1,5 @@
 import React from 'react';
+import { REPO_URL, X_URL } from '../lib/links';
 import { motion } from 'motion/react';
 import { Terminal, Github } from 'lucide-react';
 
@@ -64,7 +65,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenRunLocally }) => {
           Run locally
         </button>
         <a
-          href="https://github.com"
+          href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 h-11 px-5 rounded-full border border-white/10 bg-white/[0.03] text-[14px] font-medium text-fg hover:bg-white/[0.08] hover:border-white/20 transition-colors"

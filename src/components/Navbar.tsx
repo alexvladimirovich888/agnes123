@@ -1,4 +1,5 @@
 import React from 'react';
+import { REPO_URL, X_URL } from '../lib/links';
 import { Terminal, Github } from 'lucide-react';
 
 interface NavbarProps {
@@ -31,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenRunLocally }) => {
 
         <nav className="flex items-center gap-1 sm:gap-2">
           <a
-            href="https://github.com"
+            href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:inline-flex w-9 h-9 items-center justify-center rounded-full text-fg-2 hover:text-fg hover:bg-white/[0.06] transition-colors"
@@ -40,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenRunLocally }) => {
             <Github className="w-[18px] h-[18px]" />
           </a>
           <a
-            href="https://x.com"
+            href={X_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:inline-flex w-9 h-9 items-center justify-center rounded-full text-fg-2 hover:text-fg hover:bg-white/[0.06] transition-colors"
