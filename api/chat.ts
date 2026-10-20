@@ -36,7 +36,11 @@ export function getApiKeys() {
     xaiModel = rawModel;
   }
 
-  return { xaiKey, geminiKey, xaiModel };
+  const rawAnthropic = (process.env.ANTHROPIC_API_KEY || '').trim();
+  const anthropicKey = rawAnthropic !== '' ? rawAnthropic : null;
+  const anthropicModel = (process.env.ANTHROPIC_MODEL || '').trim() || 'claude-haiku-5-5';
+
+  return { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel };
 }
 
 // Helper: fetch live currency and crypto market snapshot to ground all agent responses
@@ -184,6 +188,62 @@ async function callXai(
   throw new Error(`xAI API returned status ${lastStatus || 500}: ${lastErrorText || 'Failed to get response'}`);
 }
 
+// Call Anthropic Messages API (Claude) using native REST fetch
+async function callAnthropic(
+  apiKey: string,
+  model: string,
+  fullSystemPrompt: string,
+  messages: ChatMessagePayload[]
+): Promise<{ reply: string; model: string }> {
+  // Messages must start with a user turn and alternate roles: merge consecutive turns of the same role
+  const turns: { role: 'user' | 'assistant'; content: string }[] = [];
+  for (const m of messages) {
+    const content = (m.content || '').trim();
+    if (!content) continue;
+    const role: 'user' | 'assistant' = m.role === 'agent' || m.role === 'assistant' ? 'assistant' : 'user';
+    const prev = turns[turns.length - 1];
+    if (prev && prev.role === role) prev.content += `\n\n${content}`;
+    else turns.push({ role, content });
+  }
+  while (turns.length && turns[0].role !== 'user') turns.shift();
+  if (turns.length === 0) turns.push({ role: 'user', content: 'Hello' });
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 55000);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 4096,
+        system: fullSystemPrompt,
+        messages: turns,
+      }),
+      signal: controller.signal,
+    });
+
+    const data = (await res.json().catch(() => ({}))) as any;
+    if (!res.ok) {
+      const msg = data?.error?.message || `HTTP ${res.status}`;
+      throw new Error(`Anthropic API error (${res.status}): ${msg}`);
+    }
+    const reply = (data.content || [])
+      .filter((b: any) => b?.type === 'text' && typeof b.text === 'string')
+      .map((b: any) => b.text)
+      .join('\n')
+      .trim();
+    if (!reply) throw new Error('Anthropic API returned an empty response');
+    return { reply, model: data.model || model };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // Call Google Gemini API using native REST fetch
 async function callGemini(
   geminiKey: string,
@@ -280,9 +340,27 @@ CRITICAL RULES FOR RESPONDING:
 2. If asked for currency rates (e.g. USD/RUB, EUR/USD, crypto, etc.), ALWAYS provide the exact current numbers from the live snapshot above or your latest knowledge base.
 3. Be confident, precise, and immediately helpful on all questions regarding prices, rates, world events, and general facts.`;
 
-    const { xaiKey, geminiKey, xaiModel } = getApiKeys();
+    const { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel } = getApiKeys();
+    let anthropicError = '';
     let xaiError = '';
     let geminiError = '';
+
+    // 0. Primary: Anthropic Claude
+    if (anthropicKey) {
+      try {
+        const res = await callAnthropic(anthropicKey, anthropicModel, fullSystemPrompt, messages);
+        return {
+          reply: res.reply,
+          model: res.model,
+          provider: 'anthropic'
+        };
+      } catch (err: any) {
+        anthropicError = err.message || String(err);
+        console.error('[Anthropic Failure]', anthropicError);
+      }
+    } else {
+      anthropicError = 'ANTHROPIC_API_KEY is not configured.';
+    }
 
     // 1. Try xAI Grok
     if (xaiKey) {
@@ -324,7 +402,7 @@ CRITICAL RULES FOR RESPONDING:
       reply: fallbackReply,
       model: 'OpenBots Autonomous Engine',
       provider: 'local-fallback',
-      details: `${xaiError} | ${geminiError}`
+      details: `${anthropicError} | ${xaiError} | ${geminiError}`
     };
   } catch (outerErr: any) {
     const fallbackReply = generateAutonomousFallback(payload || { messages: [] });
