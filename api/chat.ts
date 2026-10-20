@@ -580,21 +580,22 @@ function generateAutonomousFallback(payload: ChatRequestPayload, liveMarketInfo?
   const agentId = payload.agentId || 'vex';
   const agentName = payload.agentName || 'OpenBot Agent';
   const lastUserMsg = [...payload.messages].reverse().find(m => m.role === 'user')?.content || 'Hello';
-  const marketNote = liveMarketInfo ? `\n\n📊 **Текущие данные рынка:**\n${liveMarketInfo}` : '';
+  const marketNote = liveMarketInfo ? `\n\n📊 **Current market data:**\n${liveMarketInfo}` : '';
+  const offlineNote = '\n\n*(OpenBots offline mode: add a provider key or a local model in `.env` to enable full answers.)*';
 
   switch (agentId) {
     case 'vex':
-      return `**[PLUTUS — Режим рыночной аналитики]**\n\nЗапрос: *"${lastUserMsg}"*\n\n${marketNote}\n\n1. **Анализ ликвидности**: Текущие валютные и криптопары демонстрируют стабильную активность. При планировании конвертации или хеджирования учитывайте спред и волатильность.\n2. **Управление рисками**: Сохраняйте диверсификацию между твердой валютой, золотом и ликвидными инструментами.\n\n*(OpenBots Autonomous Engine | Для подключения live-генерации grok-4.6 проверьте XAI_API_KEY в Vercel)*`;
-    
+      return `**[PLUTUS — Market analysis mode]**\n\nRequest: *"${lastUserMsg}"*\n${marketNote}\n\n1. **Liquidity**: major currency and crypto pairs are trading actively. Account for spread and volatility when converting or hedging.\n2. **Risk management**: keep exposure diversified across hard currency, gold and liquid instruments.${offlineNote}`;
+
     case 'byte':
-      return `**[HEPHAESTUS — Код и автоматизация]**\n\nЗадача: *"${lastUserMsg}"*\n\n\`\`\`typescript\n// Автоматический скрипт запроса курса валют\nasync function getUsdRubRate() {\n  const res = await fetch('https://open.er-api.com/v6/latest/USD');\n  const data = await res.json();\n  console.log(\`USD/RUB: \${data.rates.RUB}\`);\n  return data.rates.RUB;\n}\n\`\`\`\n${marketNote}\n\nСкрипт готов к внедрению в любой сервис или Telegram-бот.`;
+      return `**[HEPHAESTUS — Code & automation]**\n\nTask: *"${lastUserMsg}"*\n\n\`\`\`typescript\n// Fetch a live exchange rate\nasync function getUsdEurRate() {\n  const res = await fetch('https://open.er-api.com/v6/latest/USD');\n  const data = await res.json();\n  console.log(\`USD/EUR: \${data.rates.EUR}\`);\n  return data.rates.EUR;\n}\n\`\`\`\n${marketNote}\n\nReady to drop into any service or bot.${offlineNote}`;
 
     case 'pulse':
-      return `**[HERMES — Исследования и мониторинг]**\n\nМониторинг инфополя по запросу: *"${lastUserMsg}"*\n\n- **Сигнал**: Высокий интерес пользователей к валютным колебаниям и макроэкономическим новостям.\n- **Медиа-фон**: В соцсетях и аналитических каналах ключевыми драйверами остаются процентные ставки и торговые балансы.\n${marketNote}`;
+      return `**[HERMES — Research & monitoring]**\n\nMonitoring the information space for: *"${lastUserMsg}"*\n\n- **Signal**: strong public interest in currency moves and macroeconomic news.\n- **Media backdrop**: interest rates and trade balances remain the main drivers across social and analyst channels.\n${marketNote}${offlineNote}`;
 
     case 'morph':
     default:
-      return `**[${agentName}]**\n\nОтвет на ваш запрос: *"${lastUserMsg}"*.\n${marketNote}\n\nВсе системы OpenBots активны.`;
+      return `**[${agentName}]**\n\nResponse to your request: *"${lastUserMsg}"*.\n${marketNote}\n\nAll OpenBots systems are online.${offlineNote}`;
   }
 }
 
