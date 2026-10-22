@@ -31,10 +31,10 @@ export const AgentHoverCard: React.FC<AgentHoverCardProps> = ({ agent, onSelect,
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: side === 'right' ? -6 : 6, scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 460, damping: 32 }}
-      className="relative w-[320px] p-4 rounded-[20px] text-left select-text pointer-events-auto backdrop-blur-xl overflow-hidden"
+      className="relative w-[320px] p-4 rounded-[24px] text-left select-text pointer-events-auto overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(27,29,36,0.94), rgba(18,19,24,0.96))',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'linear-gradient(180deg, #1c1c30, #0e0e1a)',
+        border: '1px solid rgba(196,190,255,0.12)',
         boxShadow: `0 30px 60px -20px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,0,0,0.4), 0 0 50px -20px ${palette.glow}66`,
       }}
       onClick={(e) => e.stopPropagation()}
@@ -54,7 +54,7 @@ export const AgentHoverCard: React.FC<AgentHoverCardProps> = ({ agent, onSelect,
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-display text-[14px] font-semibold tracking-[0.04em] text-fg">{agent.name}</span>
+            <span className="font-display text-[14px] font-semibold tracking-[0.01em] text-fg">{agent.name}</span>
             <span className="relative flex w-1.5 h-1.5">
               <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60" />
               <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -66,6 +66,10 @@ export const AgentHoverCard: React.FC<AgentHoverCardProps> = ({ agent, onSelect,
 
       <p className="text-[13.5px] text-fg leading-snug mb-1.5">{agent.personality.greeting}</p>
       <p className="text-[12.5px] text-fg-2 leading-relaxed line-clamp-2 mb-3">{agent.description}</p>
+
+      <p className="text-[12px] text-fg-3 mb-3">
+        <span className="text-fg-2">Personality:</span> {agent.personality.traits.slice(0, 4).join(', ').toLowerCase()}
+      </p>
 
       <div className="flex flex-wrap gap-1.5 mb-3.5">
         {agent.specialties.slice(0, 3).map((spec, idx) => (

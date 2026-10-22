@@ -43,10 +43,10 @@ export const AgentNode: React.FC<AgentNodeProps> = ({ agent, currentSpeech, onSe
       >
         <div className="relative mb-3">
           <div
-            className="absolute inset-x-0 -bottom-3 h-6 rounded-[50%] blur-md transition-opacity"
-            style={{ background: palette.glow, opacity: isHovered ? 0.45 : 0.18 }}
+            className="absolute inset-x-0 -bottom-3 h-8 transition-opacity"
+            style={{ background: `radial-gradient(closest-side, ${palette.glow}, transparent)`, opacity: isHovered ? 0.5 : 0.22 }}
           />
-          <AgentAvatar type={agent.avatarType} avatarUrl={agent.avatarUrl} size="xl" isHovered={isHovered} alt={agent.name} />
+          <AgentAvatar type={agent.avatarType} size="xl" full isHovered={isHovered} alt={agent.name} />
         </div>
         <span className="font-display text-[13px] font-semibold tracking-[0.06em]" style={{ color: isHovered ? palette.text : undefined }}>
           {agent.name}

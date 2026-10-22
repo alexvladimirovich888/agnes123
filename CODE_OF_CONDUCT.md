@@ -1,6 +1,6 @@
 # Code of Conduct
 
-We want OpenBots to be a welcoming project for everyone, regardless of background or experience.
+We want SourceBots to be a welcoming project for everyone, regardless of background or experience.
 
 **Expected:** be respectful and patient, assume good intent, give constructive feedback on code rather
 than on people, and credit others' work.

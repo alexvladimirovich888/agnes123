@@ -3,15 +3,17 @@ import { AgentConfig } from '../types';
 import { AgentNode } from './AgentNode';
 import { hasWebGL, WebGLBoundary } from './three/support';
 
-const AgentStage = lazy(() => import('./three/AgentStage').then((m) => ({ default: m.AgentStage })));
+const HeroStage = lazy(() => import('./three/HeroStage').then((m) => ({ default: m.HeroStage })));
 
 interface AgentConstellationProps {
   agents: AgentConfig[];
   onSelectAgent: (agent: AgentConfig, initialPrompt?: string) => void;
   paused?: boolean;
+  /** 0..1 progress of the hero scrolling out of view */
+  scrollRef: React.MutableRefObject<number>;
 }
 
-export const AgentConstellation: React.FC<AgentConstellationProps> = ({ agents, onSelectAgent, paused = false }) => {
+export const AgentConstellation: React.FC<AgentConstellationProps> = ({ agents, onSelectAgent, paused = false, scrollRef }) => {
   const [activeSpeech, setActiveSpeech] = useState<{
     agentId: string;
     text: string;
@@ -54,10 +56,11 @@ export const AgentConstellation: React.FC<AgentConstellationProps> = ({ agents, 
     };
   }, [agents]);
 
+  // 2D fallback: lives in the lower/right part of the hero, like the 3D stage
   const fallback = (
-    <div className="absolute inset-0 flex items-center justify-center">
-      <div className="max-w-4xl w-full mx-auto px-6 sm:px-12">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-10 justify-items-center">
+    <div className="absolute inset-x-0 bottom-0 top-[46%] lg:top-0 lg:left-[38%] flex items-center justify-center">
+      <div className="w-full max-w-2xl px-6">
+        <div className="grid grid-cols-2 gap-y-12 gap-x-10 justify-items-center">
           {agents.map((agent, i) => (
             <AgentNode
               key={agent.id}
@@ -73,17 +76,16 @@ export const AgentConstellation: React.FC<AgentConstellationProps> = ({ agents, 
   );
 
   return (
-    <section id="agents-canvas" className="relative flex-1 min-h-[360px]" aria-label="Agents">
-      <div className="stage-floor" />
+    <div className="absolute inset-0" aria-label="Agents">
       {hasWebGL() ? (
         <WebGLBoundary fallback={fallback}>
           <Suspense fallback={null}>
-            <AgentStage agents={agents} speech={activeSpeech} onSelect={onSelectAgent} paused={paused} />
+            <HeroStage agents={agents} speech={activeSpeech} onSelect={onSelectAgent} paused={paused} scrollRef={scrollRef} />
           </Suspense>
         </WebGLBoundary>
       ) : (
         fallback
       )}
-    </section>
+    </div>
   );
 };

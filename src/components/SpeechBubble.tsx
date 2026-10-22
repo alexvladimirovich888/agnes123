@@ -22,9 +22,9 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ text, isVisible, glo
           className={`pointer-events-none origin-bottom ${compact ? 'w-[190px]' : 'whitespace-nowrap'}`}
         >
           <div
-            className={`relative flex items-center gap-2 pl-3 pr-3.5 py-2 rounded-2xl text-fg backdrop-blur-md ${compact ? 'text-[11.5px] leading-snug' : 'text-[12.5px]'}`}
+            className={`relative flex items-center gap-2 pl-3 pr-3.5 py-2 rounded-2xl text-fg ${compact ? 'text-[11.5px] leading-snug' : 'text-[12.5px]'}`}
             style={{
-              background: 'rgba(21, 23, 29, 0.88)',
+              background: 'rgba(17, 18, 31, 0.9)',
               border: `1px solid ${glow}33`,
               boxShadow: `0 10px 30px -10px rgba(0,0,0,0.8), 0 0 24px -8px ${glow}55`,
             }}
@@ -33,7 +33,7 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ text, isVisible, glo
             {text}
             <span
               className={`absolute -bottom-[5px] -translate-x-1/2 w-2.5 h-2.5 rotate-45 ${compact ? 'hidden' : 'left-1/2'}`}
-              style={{ background: 'rgba(21, 23, 29, 0.95)', borderRight: `1px solid ${glow}33`, borderBottom: `1px solid ${glow}33` }}
+              style={{ background: 'rgba(17, 18, 31, 0.95)', borderRight: `1px solid ${glow}33`, borderBottom: `1px solid ${glow}33` }}
             />
           </div>
         </motion.div>

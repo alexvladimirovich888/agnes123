@@ -1,7 +1,7 @@
 {
-  "name": "openbots",
+  "name": "sourcebots",
   "private": true,
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Open-source agent platform: four specialised AI agents with web search, a code sandbox, API access and x402 payment detection, in a 3D interface. Run it hosted or fully local.",
   "license": "MIT",
   "type": "module",

@@ -54,9 +54,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build image
-        run: docker build -t openbots:ci .
+        run: docker build -t sourcebots:ci .
       - name: Run container and check health
         run: |
-          docker run -d --name openbots -p 3000:3000 openbots:ci
+          docker run -d --name sourcebots -p 3000:3000 sourcebots:ci
           for i in $(seq 1 30); do curl -fsS http://localhost:3000/api/status && exit 0; sleep 1; done
-          docker logs openbots; exit 1
+          docker logs sourcebots; exit 1

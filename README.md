@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="public/brand/logo-mark.png" alt="OpenBots" width="132" />
+<img src="public/brand/logo.svg" alt="SourceBots" width="132" />
 
-# OpenBots
+# SourceBots
 
 **Four AI agents that search the web, read pages, run code in a sandbox and call APIs.<br/>Use them in the browser or run the whole stack on your own machine.**
 
@@ -12,20 +12,20 @@
 
 [Live demo](https://agnes123.vercel.app) · [Quick start](#quick-start) · [Run fully local](#run-fully-local-with-an-open-weight-model) · [Architecture](#architecture) · [API](#api-reference) · [Roadmap](#roadmap)
 
-<img src="docs/assets/home.png" alt="OpenBots home screen with four 3D agents" width="100%" />
+<img src="docs/assets/home.png" alt="SourceBots home screen with four 3D agents" width="100%" />
 
 </div>
 
 ---
 
-## Why OpenBots
+## Why SourceBots
 
-Most assistants answer from memory and need plugins to do anything else. OpenBots agents **act**: each answer can
+Most assistants answer from memory and need plugins to do anything else. SourceBots agents **act**: each answer can
 involve searching the live web, opening sources, running Python in an isolated sandbox and calling public APIs, and
 the chat shows every step they took.
 
 - **Agents, not a chatbot.** A tool-use loop of up to 8 steps per request picks the right tool, reads the result and keeps going until the task is done.
-- **Hosted or fully local.** Use the hosted agent runtime with tools, or point OpenBots at an open-weight model in Ollama, LM Studio, vLLM or llama.cpp and keep everything on your machine.
+- **Hosted or fully local.** Use the hosted agent runtime with tools, or point SourceBots at an open-weight model in Ollama, LM Studio, vLLM or llama.cpp and keep everything on your machine.
 - **Built for the agent economy.** Agents understand [x402](https://www.x402.org/) `402 Payment Required` responses and report exactly what an API would charge.
 - **Safe by construction.** Outbound calls are SSRF-guarded, code runs in an isolated container, payments are never sent automatically. See [SECURITY.md](SECURITY.md).
 - **Open source.** MIT licensed, 50+ tests, CI on every push.
@@ -34,17 +34,17 @@ the chat shows every step they took.
 
 | | Agent | Role | Ask it to… |
 |:-:|---|---|---|
-| <img src="public/avatars/Asset%206redagentv2agent.png" width="44" alt="" /> | **PLUTUS** | Portfolio & market agent | price an asset, compare currencies, stress-test a portfolio, explain a macro move |
-| <img src="public/avatars/Asset%203greenagent.png" width="44" alt="" /> | **HEPHAESTUS** | Coding & automation agent | write and *run* a script, debug a stack trace, build a scraper, automate a workflow |
-| <img src="public/avatars/Asset%204blueagent.png" width="44" alt="" /> | **HERMES** | Research & intelligence agent | track a narrative across the web, fact-check a claim, separate FACT from SIGNAL from SPECULATION |
-| <img src="public/avatars/Asset%205customagent.png" width="44" alt="" /> | **PROTEUS** | Custom agent | become any expert you describe: lawyer, game designer, analyst |
+| <img src="public/avatars/plutus.png" width="44" alt="" /> | **PLUTUS** | Portfolio & market agent | price an asset, compare currencies, stress-test a portfolio, explain a macro move |
+| <img src="public/avatars/hephaestus.png" width="44" alt="" /> | **HEPHAESTUS** | Coding & automation agent | write and *run* a script, debug a stack trace, build a scraper, automate a workflow |
+| <img src="public/avatars/hermes.png" width="44" alt="" /> | **HERMES** | Research & intelligence agent | track a narrative across the web, fact-check a claim, separate FACT from SIGNAL from SPECULATION |
+| <img src="public/avatars/proteus.png" width="44" alt="" /> | **PROTEUS** | Custom agent | become any expert you describe: lawyer, game designer, analyst |
 
-Every agent has its own personality, idle chatter and a real-time 3D body that reacts to what it is doing.
+Every agent has its own personality, props and a real-time 3D body with expressive eyes: it blinks, follows your cursor, smiles when you say hello, squints while it thinks and talks when it answers.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/hover-card.png" alt="Hover card for HEPHAESTUS" /><br/><sub>Hover an agent to see what it does and send a task.</sub></td>
-<td width="50%"><img src="docs/assets/agent-thinking.png" alt="PLUTUS thinking with halo and orbiting sparks" /><br/><sub>Thinking: halo, orbiting sparks, hand to chin. Answering: speech rings and gestures.</sub></td>
+<td width="50%"><img src="docs/assets/hover-card.png" alt="Hover card for PLUTUS" /><br/><sub>Agents orbit the source. Hover one to meet it, click to chat.</sub></td>
+<td width="50%"><img src="docs/assets/agent-thinking.png" alt="PLUTUS thinking, with his market chart lit" /><br/><sub>Each agent has its own look and props: monocle and charts, goggles and hammer, headset and magnifier, a shape-shifting gem.</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="docs/assets/tool-trail.png" alt="Chat showing a sandbox step and a results table" /><br/><sub>The tool trail shows each step: here a Python run in the sandbox.</sub></td>
@@ -59,8 +59,8 @@ Every agent has its own personality, idle chatter and a real-time 3D body that r
 | `web_search` | Searches the live web and cites sources | Model provider | *"What changed in Node.js 24.22?"* |
 | `web_fetch` | Opens and reads a specific page or document | Model provider | *"Summarise https://example.com/whitepaper.pdf"* |
 | `code_execution` | Isolated container with bash and Python for exact maths, data work and tested scripts | Model provider sandbox | *"How much BTC and ETH can I buy for $2,500? Show a table."* |
-| `http_request` | Calls public REST/JSON APIs (`GET`/`HEAD`), recognises x402 payment requests | OpenBots server, SSRF-guarded | *"Query the CoinGecko API for SOL and compare it with last week."* |
-| Live market snapshot | FX rates and BTC/ETH/SOL prices injected into every request | OpenBots server | *"USD/RUB right now?"* |
+| `http_request` | Calls public REST/JSON APIs (`GET`/`HEAD`), recognises x402 payment requests | SourceBots server, SSRF-guarded | *"Query the CoinGecko API for SOL and compare it with last week."* |
+| Live market snapshot | FX rates and BTC/ETH/SOL prices injected into every request | SourceBots server | *"USD/RUB right now?"* |
 
 Tools are available with the hosted agent runtime. Local models get the same agents, prompts and live market
 snapshot; tool use for local models is on the [roadmap](#roadmap).
@@ -76,8 +76,8 @@ Open **[agnes123.vercel.app](https://agnes123.vercel.app)**, hover an agent and 
 Requires Node.js 20+ and Git.
 
 ```bash
-git clone https://github.com/alexvladimirovich888/agnes123.git openbots
-cd openbots
+git clone https://github.com/alexvladimirovich888/agnes123.git sourcebots
+cd sourcebots
 npm ci
 cp .env.example .env          # then add your keys, see Configuration
 npm run dev                   # http://localhost:3000
@@ -88,11 +88,11 @@ Production build: `npm run build && npm start`.
 ### Run with Docker
 
 ```bash
-git clone https://github.com/alexvladimirovich888/agnes123.git openbots
-cd openbots
+git clone https://github.com/alexvladimirovich888/agnes123.git sourcebots
+cd sourcebots
 cp .env.example .env
-docker build -t openbots .
-docker run -d --name openbots -p 3000:3000 --env-file .env openbots
+docker build -t sourcebots .
+docker run -d --name sourcebots -p 3000:3000 --env-file .env sourcebots
 curl http://localhost:3000/api/status        # → "status": "online"
 ```
 
@@ -104,7 +104,7 @@ No cloud keys, nothing leaves your machine except the optional market snapshot.
 # 1. Install Ollama from https://ollama.com and pull a model
 ollama pull llama3.1                # or qwen2.5, mistral, gemma2 …
 
-# 2. Point OpenBots at it
+# 2. Point SourceBots at it
 cat >> .env <<'ENV'
 LOCAL_MODEL_BASE_URL=http://localhost:11434/v1
 LOCAL_MODEL_NAME=llama3.1
@@ -130,7 +130,7 @@ All settings are environment variables (`.env` locally, project settings on Verc
 | `LOCAL_MODEL_API_KEY` | — | Optional bearer token for the local endpoint |
 | Fallback provider keys | — | Optional, see `.env.example` |
 
-**Provider routing.** For every message OpenBots tries, in order: hosted agent runtime → local model → fallback
+**Provider routing.** For every message SourceBots tries, in order: hosted agent runtime → local model → fallback
 providers → built-in templates. The first one that is configured and answers wins, so the app always responds,
 even with no keys at all.
 
@@ -142,7 +142,7 @@ flowchart LR
         UI["React 19 UI<br/>3D agents (three.js / R3F)"]
     end
 
-    subgraph Server["OpenBots server (Vercel function or Express)"]
+    subgraph Server["SourceBots server (Vercel function or Express)"]
         API["POST /api/chat"]
         MKT["Live market snapshot<br/>FX + crypto"]
         ROUTER{"Provider router"}
@@ -171,7 +171,7 @@ flowchart LR
     API -- "reply + toolsUsed" --> UI
 ```
 
-**Agnes 2.5 Pro** is the OpenBots agent runtime in [`api/chat.ts`](api/chat.ts): the agent personas, the tool
+**Agnes 2.5 Pro** is the SourceBots agent runtime in [`api/chat.ts`](api/chat.ts): the agent personas, the tool
 loop, provider routing and the safety layer. It runs on top of whichever model you configure.
 
 ### The agent loop
@@ -179,7 +179,7 @@ loop, provider routing and the safety layer. It runs on top of whichever model y
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant S as OpenBots server
+    participant S as SourceBots server
     participant M as Model
     participant T as Tools
 
@@ -203,7 +203,7 @@ sequenceDiagram
 ## x402 payments
 
 [x402](https://www.x402.org/) lets an HTTP API ask for payment with a `402 Payment Required` response.
-When an agent calls such an endpoint, OpenBots parses both protocol versions (requirements in the JSON body for
+When an agent calls such an endpoint, SourceBots parses both protocol versions (requirements in the JSON body for
 v1, base64 `PAYMENT-REQUIRED` header for v2) and hands the agent a structured quote:
 
 ```json
@@ -251,7 +251,7 @@ limits and explicit confirmation; that work is tracked in the [roadmap](#roadmap
 Reports which providers are configured. It never returns key values.
 
 ```json
-{ "status": "online", "platform": "OpenBots", "anthropicModel": "claude-haiku-5-5", "hasAnthropicKey": true, "hasLocalModel": false }
+{ "status": "online", "platform": "SourceBots", "anthropicModel": "claude-haiku-5-5", "hasAnthropicKey": true, "hasLocalModel": false }
 ```
 
 ## Security
@@ -326,12 +326,12 @@ function is configured for up to 120 s so multi-step agent runs finish.
 ## FAQ
 
 **Is the model open source?**
-The OpenBots platform is open source under MIT. The default hosted runtime calls a commercial model API with your
+The SourceBots platform is open source under MIT. The default hosted runtime calls a commercial model API with your
 key, which is what enables search, fetch and the code sandbox. For a fully open stack, run an open-weight model
 (Llama, Qwen, Mistral, Gemma) and set `LOCAL_MODEL_BASE_URL`; see [Run fully local](#run-fully-local-with-an-open-weight-model).
 
 **What does it cost?**
-OpenBots is free. With the hosted runtime you pay your provider per token; Haiku-class models are among the
+SourceBots is free. With the hosted runtime you pay your provider per token; Haiku-class models are among the
 cheapest available. A local model costs nothing beyond your hardware.
 
 **Can agents spend money or create accounts on their own?**
@@ -348,7 +348,7 @@ issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-[MIT](LICENSE) © OpenBots contributors
+[MIT](LICENSE) © SourceBots contributors
 
 Built with [React](https://react.dev), [three.js](https://threejs.org), [React Three Fiber](https://r3f.docs.pmnd.rs),
 [Vite](https://vite.dev), [Tailwind CSS](https://tailwindcss.com) and [Express](https://expressjs.com).

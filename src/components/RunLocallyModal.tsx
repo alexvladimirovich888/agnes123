@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Copy, Check, Github, ChevronDown, Terminal, Container, CircleCheck, Cpu } from 'lucide-react';
 import { REPO_URL, X_URL } from '../lib/links';
+import { LogoMark } from './Logo';
 
 interface RunLocallyModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ function buildSteps(runtime: Runtime, platform: Platform): Step[] {
   const win = platform === 'windows';
   const clone: Step = {
     title: 'Clone the repository',
-    code: `git clone ${REPO_URL}.git openbots\ncd openbots`,
+    code: `git clone ${REPO_URL}.git sourcebots\ncd sourcebots`,
   };
   const env: Step = {
     title: 'Configure your environment',
@@ -59,7 +60,7 @@ function buildSteps(runtime: Runtime, platform: Platform): Step[] {
       clone,
       { title: 'Install dependencies', code: 'npm ci' },
       {
-        title: 'Point OpenBots at your model',
+        title: 'Point SourceBots at your model',
         body: <>No cloud keys needed. Conversations stay on your machine.</>,
         code: win
           ? 'Copy-Item .env.example .env\nAdd-Content .env "LOCAL_MODEL_BASE_URL=http://localhost:11434/v1"\nAdd-Content .env "LOCAL_MODEL_NAME=llama3.1"'
@@ -87,7 +88,7 @@ function buildSteps(runtime: Runtime, platform: Platform): Step[] {
         body: (
           <>
             Runs the API and the web app together with hot reload. Open <Code>http://localhost:3000</Code> when you see{' '}
-            <Code>OpenBots Server running</Code>.
+            <Code>SourceBots Server running</Code>.
           </>
         ),
         code: 'npm run dev',
@@ -106,7 +107,7 @@ function buildSteps(runtime: Runtime, platform: Platform): Step[] {
     {
       title: 'Build the image',
       body: <>Multi-stage build on Node 20 Alpine. The first build takes a couple of minutes.</>,
-      code: 'docker build -t openbots .',
+      code: 'docker build -t sourcebots .',
     },
     {
       title: 'Run the container',
@@ -115,11 +116,11 @@ function buildSteps(runtime: Runtime, platform: Platform): Step[] {
           Starts in the background and reads keys from your <Code>.env</Code>. Then open <Code>http://localhost:3000</Code>.
         </>
       ),
-      code: 'docker run -d --name openbots -p 3000:3000 --env-file .env openbots',
+      code: 'docker run -d --name sourcebots -p 3000:3000 --env-file .env sourcebots',
     },
     {
       title: 'Follow logs, stop and remove',
-      code: 'docker logs -f openbots\ndocker stop openbots\ndocker rm openbots',
+      code: 'docker logs -f sourcebots\ndocker stop sourcebots\ndocker rm sourcebots',
     },
   ];
 }
@@ -177,7 +178,7 @@ export const RunLocallyModal: React.FC<RunLocallyModalProps> = ({ isOpen, onClos
   const verify = platform === 'windows' ? 'Invoke-RestMethod http://localhost:3000/api/status' : 'curl http://localhost:3000/api/status';
 
   const CodeBlock = ({ id, code }: { id: string; code: string }) => (
-    <div className="group relative mt-2.5 rounded-xl border border-white/[0.07] bg-[#0a0b0e]">
+    <div className="group relative mt-2.5 rounded-xl border border-line bg-[#07070f]">
       <pre className="pl-4 pr-12 py-3 font-mono text-[12.5px] text-fg/90 overflow-x-auto leading-relaxed">
         <code>
           {code.split('\n').map((line, i) => (
@@ -210,7 +211,7 @@ export const RunLocallyModal: React.FC<RunLocallyModalProps> = ({ isOpen, onClos
     options: { value: T; label: string; icon?: React.ReactNode }[];
     label: string;
   }) => (
-    <div role="tablist" aria-label={label} className="inline-flex p-1 rounded-full bg-white/[0.04] border border-white/[0.07]">
+    <div role="tablist" aria-label={label} className="inline-flex p-1 rounded-full bg-white/[0.04] border border-line">
       {options.map((o) => (
         <button
           key={o.value}
@@ -237,40 +238,40 @@ export const RunLocallyModal: React.FC<RunLocallyModalProps> = ({ isOpen, onClos
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/70 backdrop-blur-md"
+            className="fixed inset-0 bg-[#05050c]/80"
           />
 
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-label="Run OpenBots locally"
+            aria-label="Run SourceBots locally"
             initial={{ opacity: 0, scale: 0.96, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-            className="relative w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col sm:rounded-[28px] bg-ink border border-white/[0.08] shadow-[0_40px_120px_-30px_rgba(0,0,0,0.9)] z-10 overflow-hidden"
+            className="relative w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col sm:rounded-[32px] bg-ink-2 border border-line shadow-[0_40px_120px_-30px_rgba(0,0,0,0.9)] z-10 overflow-hidden"
           >
             <div
               className="absolute -top-32 left-1/2 -translate-x-1/2 w-[560px] h-[260px] pointer-events-none opacity-70"
               style={{
                 background:
-                  'radial-gradient(closest-side, rgba(97,165,53,0.16), transparent), radial-gradient(closest-side at 70% 50%, rgba(61,126,170,0.18), transparent), radial-gradient(closest-side at 30% 60%, rgba(204,117,117,0.14), transparent)',
+                  'radial-gradient(closest-side, rgba(157,123,255,0.2), transparent), radial-gradient(closest-side at 70% 50%, rgba(61,214,245,0.16), transparent), radial-gradient(closest-side at 30% 60%, rgba(255,106,61,0.14), transparent)',
               }}
             />
 
             {/* Header */}
-            <div className="relative shrink-0 px-5 sm:px-8 pt-5 sm:pt-7 pb-5 border-b border-white/[0.06]">
+            <div className="relative shrink-0 px-5 sm:px-8 pt-5 sm:pt-7 pb-5 border-b border-line">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3.5">
-                  <img src="/brand/logo-mark-128.png" alt="" className="w-11 h-11" />
+                  <LogoMark size={44} alive />
                   <div>
-                    <h3 className="font-display text-[20px] sm:text-[22px] font-medium tracking-[-0.02em] text-fg">Run OpenBots locally</h3>
+                    <h3 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.03em] text-fg">Run SourceBots locally</h3>
                     <p className="text-[13px] text-fg-2 mt-0.5">Self-host the full app and API on your own machine in about five minutes.</p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
-                  className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.06] text-fg-2 hover:text-fg transition-colors"
+                  className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-line text-fg-2 hover:text-fg transition-colors"
                   aria-label="Close"
                 >
                   <X className="w-4 h-4" />
@@ -302,7 +303,7 @@ export const RunLocallyModal: React.FC<RunLocallyModalProps> = ({ isOpen, onClos
 
             {/* Body */}
             <div className="relative flex-1 min-h-0 overflow-y-auto px-5 sm:px-8 py-6">
-              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-white/[0.07] bg-white/[0.07] mb-7">
+              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-line bg-white/[0.07] mb-7">
                 {(runtime === 'local'
                   ? [
                       { k: 'Runtime', v: 'Node.js 20 + Ollama' },
@@ -357,7 +358,7 @@ export const RunLocallyModal: React.FC<RunLocallyModalProps> = ({ isOpen, onClos
               </div>
 
               <h4 className="mt-8 mb-2 text-[15px] font-semibold text-fg">If something goes wrong</h4>
-              <div className="rounded-2xl border border-white/[0.07] divide-y divide-white/[0.06] overflow-hidden">
+              <div className="rounded-2xl border border-line divide-y divide-white/[0.06] overflow-hidden">
                 {TROUBLESHOOTING.map((item, i) => (
                   <div key={item.q}>
                     <button
@@ -387,7 +388,7 @@ export const RunLocallyModal: React.FC<RunLocallyModalProps> = ({ isOpen, onClos
             </div>
 
             {/* Footer */}
-            <div className="relative shrink-0 px-5 sm:px-8 py-4 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
+            <div className="relative shrink-0 px-5 sm:px-8 py-4 border-t border-line flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-1">
                 <a
                   href={REPO_URL}

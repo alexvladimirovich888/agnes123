@@ -16,7 +16,7 @@ app.get('/api/status', (req: Request, res: Response) => {
   const { xaiKey, geminiKey, xaiModel, anthropicKey, anthropicModel, localBaseUrl, localModel } = getApiKeys();
   res.json({
     status: 'online',
-    platform: 'OpenBots',
+    platform: 'SourceBots',
     version: '2.5.0',
     activeAgents: 4,
     xaiModel,
@@ -63,7 +63,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`OpenBots Server running on http://0.0.0.0:${PORT}`);
+    console.log(`SourceBots Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

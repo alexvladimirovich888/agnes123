@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<defs>
+<radialGradient id="shell" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#ffffff"/><stop offset="0.55" stop-color="#e9ebf3"/><stop offset="1" stop-color="#b9bdcc"/></radialGradient>
+<linearGradient id="visor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1d33"/><stop offset="1" stop-color="#07080f"/></linearGradient>
+<linearGradient id="eye" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bff4ff"/><stop offset="1" stop-color="#3dd6f5"/></linearGradient>
+</defs>
+<path d="M18.967 38.000 A52 52 0 0 1 74.811 13.136" fill="none" stroke="#3dd6f5" stroke-width="11" stroke-linecap="round"/><path d="M90.000 18.967 A52 52 0 0 1 114.864 74.811" fill="none" stroke="#f2b544" stroke-width="11" stroke-linecap="round"/><path d="M109.033 90.000 A52 52 0 0 1 53.189 114.864" fill="none" stroke="#ff6a3d" stroke-width="11" stroke-linecap="round"/><path d="M38.000 109.033 A52 52 0 0 1 13.136 53.189" fill="none" stroke="#9d7bff" stroke-width="11" stroke-linecap="round"/>
+<circle cx="64" cy="64" r="35" fill="url(#shell)"/>
+<rect x="39" y="48" width="50" height="28" rx="14" fill="url(#visor)"/>
+<rect x="51" y="54" width="7" height="14" rx="3.5" fill="url(#eye)"/>
+<rect x="70" y="54" width="7" height="14" rx="3.5" fill="url(#eye)"/>
+</svg>

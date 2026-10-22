@@ -357,7 +357,7 @@ export async function runHttpRequest(input: any): Promise<{ content: string; isE
   const method = input?.method === 'HEAD' ? 'HEAD' : 'GET';
   try {
     const url = await assertPublicUrl(String(input?.url || ''));
-    const headers: Record<string, string> = { 'user-agent': 'OpenBots-Agent/1.0', accept: 'application/json, text/plain;q=0.9, */*;q=0.5' };
+    const headers: Record<string, string> = { 'user-agent': 'SourceBots-Agent/1.0', accept: 'application/json, text/plain;q=0.9, */*;q=0.5' };
     if (input?.headers && typeof input.headers === 'object') {
       for (const [k, v] of Object.entries(input.headers)) {
         if (typeof v === 'string' && !/^(host|cookie|authorization)$/i.test(k)) headers[k] = v;
@@ -578,10 +578,10 @@ async function callGemini(
 // In-character autonomous fallback
 function generateAutonomousFallback(payload: ChatRequestPayload, liveMarketInfo?: string): string {
   const agentId = payload.agentId || 'vex';
-  const agentName = payload.agentName || 'OpenBot Agent';
+  const agentName = payload.agentName || 'SourceBots Agent';
   const lastUserMsg = [...payload.messages].reverse().find(m => m.role === 'user')?.content || 'Hello';
   const marketNote = liveMarketInfo ? `\n\n📊 **Current market data:**\n${liveMarketInfo}` : '';
-  const offlineNote = '\n\n*(OpenBots offline mode: add a provider key or a local model in `.env` to enable full answers.)*';
+  const offlineNote = '\n\n*(SourceBots offline mode: add a provider key or a local model in `.env` to enable full answers.)*';
 
   switch (agentId) {
     case 'vex':
@@ -595,7 +595,7 @@ function generateAutonomousFallback(payload: ChatRequestPayload, liveMarketInfo?
 
     case 'morph':
     default:
-      return `**[${agentName}]**\n\nResponse to your request: *"${lastUserMsg}"*.\n${marketNote}\n\nAll OpenBots systems are online.${offlineNote}`;
+      return `**[${agentName}]**\n\nResponse to your request: *"${lastUserMsg}"*.\n${marketNote}\n\nAll SourceBots systems are online.${offlineNote}`;
   }
 }
 
@@ -611,7 +611,7 @@ export async function processChat(payload: ChatRequestPayload): Promise<ChatResp
     // 1. Fetch live market & currency context dynamically
     const liveMarketInfo = await fetchLiveMarketContext();
 
-    let fullSystemPrompt = systemPrompt || 'You are an AI agent on the OpenBots platform.';
+    let fullSystemPrompt = systemPrompt || 'You are an AI agent on the SourceBots platform.';
     if (customPrompt && customPrompt.trim()) {
       fullSystemPrompt += `\n\nUSER CUSTOM SYSTEM INSTRUCTIONS:\n${customPrompt.trim()}`;
     }
@@ -698,7 +698,7 @@ CRITICAL RULES FOR RESPONDING:
     const fallbackReply = generateAutonomousFallback(payload, liveMarketInfo);
     return {
       reply: fallbackReply,
-      model: 'OpenBots Autonomous Engine',
+      model: 'SourceBots Autonomous Engine',
       provider: 'local-fallback',
       details: [anthropicError, localError, xaiError, geminiError].filter(Boolean).join(' | ')
     };
@@ -706,7 +706,7 @@ CRITICAL RULES FOR RESPONDING:
     const fallbackReply = generateAutonomousFallback(payload || { messages: [] });
     return {
       reply: fallbackReply,
-      model: 'OpenBots Autonomous Engine',
+      model: 'SourceBots Autonomous Engine',
       provider: 'local-fallback',
       details: outerErr?.message || String(outerErr)
     };
@@ -747,7 +747,7 @@ export default async function handler(req: any, res: any) {
     console.error('[Vercel Serverless] Uncaught handler error:', err);
     return res.status(200).json({
       reply: generateAutonomousFallback(req.body || { messages: [] }),
-      model: 'OpenBots Autonomous Engine',
+      model: 'SourceBots Autonomous Engine',
       provider: 'local-fallback',
       details: err?.message || String(err)
     });

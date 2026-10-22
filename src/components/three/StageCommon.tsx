@@ -2,46 +2,52 @@ import * as THREE from 'three';
 import React from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Environment, Lightformer } from '@react-three/drei';
+import { BRAND } from '../../lib/palette';
 export { usePrefersReducedMotion, useCanHover } from './support';
 
-/** Studio lighting: a wide soft box overhead gives the glossy highlights of the original avatars. No network assets. */
+/**
+ * Studio lighting for the pearl-ceramic bots: a large soft key from the top-left,
+ * coloured rim lights in the brand colours, and a reflective environment built
+ * from light panels (no network assets).
+ */
 export const StageLights: React.FC = () => (
   <>
-    <hemisphereLight args={['#ffffff', '#20232b', 0.9]} />
-    <directionalLight position={[-5, 8, 8]} intensity={1.6} />
-    <directionalLight position={[6, 4, -6]} intensity={1.2} color="#a9bcff" />
-    <directionalLight position={[-6, 3, -5]} intensity={0.6} color="#ffd2c4" />
+    <hemisphereLight args={['#f4f2ff', '#1a1630', 0.85]} />
+    <directionalLight position={[-6, 9, 9]} intensity={1.7} />
+    <directionalLight position={[7, 3, -6]} intensity={1.4} color={BRAND.volt} />
+    <directionalLight position={[-7, 2, -6]} intensity={1.0} color={BRAND.prism} />
+    <pointLight position={[0, -3, 4]} intensity={6} distance={14} color={BRAND.ember} />
     <Environment resolution={256} frames={1}>
-      {/* Small top-left softbox → the round glossy highlight on head & shoulders, like the original avatars */}
-      <Lightformer form="circle" intensity={4} position={[-4, 6, 6]} scale={2.6} target={[0, 2, 0]} />
-      <Lightformer form="circle" intensity={1.0} position={[5, 5, 5]} scale={1.6} target={[0, 2, 0]} />
-      <Lightformer form="rect" intensity={0.5} position={[-8, 1, -3]} scale={[2, 6, 1]} target={[0, 2, 0]} />
-      <Lightformer form="rect" intensity={0.5} position={[8, 1, -3]} scale={[2, 6, 1]} target={[0, 2, 0]} />
-      <Lightformer form="ring" intensity={0.8} position={[0, 3, -8]} scale={7} color="#b8c6ff" />
+      <Lightformer form="rect" intensity={3.2} position={[-3, 6, 7]} scale={[6, 4, 1]} target={[0, 0, 0]} />
+      <Lightformer form="circle" intensity={1.6} position={[5, 4, 6]} scale={2} target={[0, 0, 0]} />
+      <Lightformer form="rect" intensity={1.4} position={[9, 0, -2]} scale={[2, 8, 1]} color={BRAND.volt} target={[0, 0, 0]} />
+      <Lightformer form="rect" intensity={1.2} position={[-9, 0, -2]} scale={[2, 8, 1]} color={BRAND.prism} target={[0, 0, 0]} />
+      <Lightformer form="rect" intensity={0.8} position={[0, -6, 4]} scale={[10, 2, 1]} color={BRAND.gold} target={[0, 0, 0]} />
     </Environment>
   </>
 );
 
-/** Gentle camera parallax that follows the cursor. */
-export const CameraRig: React.FC<{ target: [number, number, number]; strength?: number; base: [number, number, number] }> = ({
-  target,
-  base,
-  strength = 0.8,
-}) => {
+/** Camera parallax that follows the cursor and dollies back as the hero scrolls away. */
+export const CameraRig: React.FC<{
+  target: [number, number, number];
+  base: [number, number, number];
+  strength?: number;
+  scrollRef?: React.MutableRefObject<number>;
+}> = ({ target, base, strength = 0.8, scrollRef }) => {
   const [tx, ty, tz] = target;
   const look = React.useMemo(() => new THREE.Vector3(tx, ty, tz), [tx, ty, tz]);
   useFrame((state, dt) => {
     const cam = state.camera;
+    const p = scrollRef?.current ?? 0;
     cam.position.x = THREE.MathUtils.damp(cam.position.x, base[0] + state.pointer.x * strength, 2.5, dt);
-    cam.position.y = THREE.MathUtils.damp(cam.position.y, base[1] + state.pointer.y * strength * 0.4, 2.5, dt);
-    cam.position.z = base[2];
+    cam.position.y = THREE.MathUtils.damp(cam.position.y, base[1] + state.pointer.y * strength * 0.45 + p * 1.5, 2.5, dt);
+    cam.position.z = THREE.MathUtils.damp(cam.position.z, base[2] + p * 5, 4, dt);
     cam.lookAt(look);
   });
   return null;
 };
 
 export const configureRenderer = ({ gl }: { gl: THREE.WebGLRenderer }) => {
-  gl.toneMapping = THREE.NeutralToneMapping;
-  gl.toneMappingExposure = 1.2;
+  gl.toneMapping = THREE.ACESFilmicToneMapping;
+  gl.toneMappingExposure = 1.05;
 };
-

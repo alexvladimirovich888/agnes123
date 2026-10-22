@@ -1,12 +1,12 @@
-# Contributing to OpenBots
+# Contributing to SourceBots
 
 Thanks for helping. This guide gets you from clone to merged pull request.
 
 ## Set up
 
 ```bash
-git clone https://github.com/alexvladimirovich888/agnes123.git openbots
-cd openbots
+git clone https://github.com/alexvladimirovich888/agnes123.git sourcebots
+cd sourcebots
 nvm use            # Node.js 20, see .nvmrc
 npm ci
 cp .env.example .env

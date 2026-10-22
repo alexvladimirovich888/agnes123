@@ -4,7 +4,9 @@ import { AgentConfig, ChatMessage } from './types';
 import { INITIAL_AGENTS } from './lib/agents';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { AgentConstellation } from './components/AgentConstellation';
+import { Capabilities } from './components/Capabilities';
+import { RunYourWay } from './components/RunYourWay';
+import { Footer } from './components/Footer';
 import { ChatWindow } from './components/ChatWindow';
 import { RunLocallyModal } from './components/RunLocallyModal';
 
@@ -178,37 +180,21 @@ export default function App() {
     }
   };
 
+  const openRunLocally = () => setIsRunLocallyOpen(true);
+
   return (
-    <div className="relative h-[100dvh] w-full bg-ink text-fg flex flex-col font-sans overflow-hidden">
-      <div className="aurora" aria-hidden />
-      <div className="grain" aria-hidden />
+    <div className="relative w-full bg-ink text-fg font-sans">
 
-      {/* Top navigation */}
-      <Navbar
-        onOpenRunLocally={() => setIsRunLocallyOpen(true)}
-      />
+      <Navbar onOpenRunLocally={openRunLocally} />
 
-      <main className="relative flex-1 min-h-0 flex flex-col">
-        {/* Hero */}
-        <Hero
-          onOpenRunLocally={() => setIsRunLocallyOpen(true)}
-        />
-
-        {/* The 4 living agents, rendered as an interactive 3D stage */}
-        <AgentConstellation
-          agents={agents}
-          onSelectAgent={handleSelectAgent}
-          paused={!!selectedAgent}
-        />
+      <main>
+        {/* Hero with the four agents orbiting the source in 3D */}
+        <Hero agents={agents} onSelectAgent={handleSelectAgent} onOpenRunLocally={openRunLocally} chatOpen={!!selectedAgent} />
+        <Capabilities />
+        <RunYourWay agents={agents} onSelectAgent={(a) => handleSelectAgent(a)} onOpenRunLocally={openRunLocally} />
       </main>
 
-      <footer className="relative z-10 shrink-0 h-10 sm:h-12 px-4 sm:px-8 flex items-center justify-between text-[11.5px] text-fg-3">
-        <span>Open source. Runs locally or in the browser.</span>
-        <span className="hidden sm:flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-          {agents.length} agents online
-        </span>
-      </footer>
+      <Footer onOpenRunLocally={openRunLocally} />
 
       {/* Chat window */}
       <AnimatePresence>

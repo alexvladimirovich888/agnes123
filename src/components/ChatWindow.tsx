@@ -8,7 +8,7 @@ import { X, ArrowUp, RotateCcw, Copy, Check, AlertCircle, Terminal, Search, Glob
 import type { ToolAction } from '../types';
 import { paletteFor } from '../lib/palette';
 import { hasWebGL, WebGLBoundary } from './three/support';
-import type { AgentMood } from './three/AgentFigure';
+import type { AgentMood } from './three/SourceBot';
 
 const ChatAgentStage = lazy(() => import('./three/ChatAgentStage').then((m) => ({ default: m.ChatAgentStage })));
 
@@ -173,7 +173,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6 bg-black/70 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6 bg-[#05050c]/80"
       onClick={onClose}
     >
       <motion.div
@@ -187,12 +187,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         transition={{ type: 'spring', stiffness: 340, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
         style={cssVars}
-        className="relative w-full max-w-[1100px] h-full sm:h-[min(88vh,800px)] flex flex-col md:flex-row sm:rounded-[28px] overflow-hidden border border-white/[0.08] bg-ink shadow-[0_40px_120px_-30px_rgba(0,0,0,0.9)]"
+        className="relative w-full max-w-[1100px] h-full sm:h-[min(88vh,800px)] flex flex-col md:flex-row sm:rounded-[32px] overflow-hidden border border-line bg-ink shadow-[0_40px_120px_-30px_rgba(0,0,0,0.9)]"
       >
         <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-30 flex items-center gap-1.5">
           <button
             onClick={onClearHistory}
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.06] text-fg-2 hover:text-fg transition-colors"
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-line text-fg-2 hover:text-fg transition-colors"
             title="Clear conversation"
             aria-label="Clear conversation"
           >
@@ -200,7 +200,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.06] text-fg-2 hover:text-fg transition-colors"
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-line text-fg-2 hover:text-fg transition-colors"
             title="Close (Esc)"
             aria-label="Close chat"
           >
@@ -209,14 +209,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
 
         {/* ---------- Agent stage ---------- */}
-        <aside className="relative shrink-0 h-[150px] md:h-auto md:w-[320px] overflow-hidden md:border-r border-b md:border-b-0 border-white/[0.06]">
+        <aside className="relative shrink-0 h-[150px] md:h-auto md:w-[360px] overflow-hidden md:border-r border-b md:border-b-0 border-line">
           <div
             className="absolute inset-0"
             style={{
-              background: `radial-gradient(70% 55% at 50% 62%, ${palette.glow}26, transparent 70%), linear-gradient(180deg, #15171d 0%, #0e0f13 100%)`,
+              background: `radial-gradient(70% 55% at 50% 62%, ${palette.glow}26, transparent 70%), linear-gradient(180deg, #14152a 0%, #090a14 100%)`,
             }}
           />
-          <div className="absolute top-0 bottom-0 right-14 left-[42%] md:right-0 md:left-0 md:top-6 md:bottom-[150px]">
+          <div className="absolute top-0 bottom-0 right-14 left-[42%] md:right-0 md:left-0 md:top-4 md:bottom-[190px]">
             {webgl ? (
               <WebGLBoundary fallback={avatarFallback}>
                 <Suspense fallback={avatarFallback}>
@@ -229,16 +229,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
 
           <div className="absolute left-5 bottom-5 md:left-6 md:right-6 md:bottom-6">
-            <h2 className="font-display text-[22px] md:text-[26px] font-semibold tracking-[0.02em] text-fg leading-none">{agent.name}</h2>
+            <h2 className="font-display text-[24px] md:text-[30px] font-semibold tracking-[-0.01em] text-fg leading-none">{agent.name}</h2>
             <p className="text-[12.5px] text-fg-2 mt-1.5">{agent.role}</p>
-            <div className="mt-3 inline-flex items-center gap-2 h-7 px-3 rounded-full bg-white/[0.05] border border-white/[0.07] text-[12px] text-fg" aria-live="polite">
+            <div className="mt-3 inline-flex items-center gap-2 h-7 px-3 rounded-full bg-white/[0.05] border border-line text-[12px] text-fg" aria-live="polite">
               <span className="relative flex w-2 h-2">
                 {mood !== 'idle' && <span className="absolute inset-0 rounded-full animate-ping opacity-70" style={{ background: statusColor }} />}
                 <span className="relative w-2 h-2 rounded-full" style={{ background: statusColor }} />
               </span>
               {MOOD_LABEL[mood]}
             </div>
-            <p className="hidden md:block mt-4 text-[11.5px] text-fg-3">Agnes 2.5 Pro core</p>
+            <div className="hidden md:flex flex-wrap gap-1.5 mt-4">
+              {agent.personality.traits.slice(0, 4).map((t) => (
+                <span key={t} className="text-[11px] px-2 py-0.5 rounded-full border border-line text-fg-2 bg-white/[0.03]">
+                  {t}
+                </span>
+              ))}
+            </div>
+            <p className="hidden md:block mt-3 text-[11.5px] text-fg-3">Agnes 2.5 Pro core</p>
           </div>
         </aside>
 
@@ -292,7 +299,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
                       <div
                         className={`min-w-0 rounded-[20px] rounded-tl-md px-4 py-3.5 sm:px-5 sm:py-4 ${
-                          msg.error ? 'bg-rose-950/40 border border-rose-500/30 text-rose-100' : 'bg-ink-2 border border-white/[0.06] text-fg'
+                          msg.error ? 'bg-rose-950/40 border border-rose-500/30 text-rose-100' : 'bg-ink-2 border border-line text-fg'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-4 mb-1.5">
@@ -324,8 +331,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                                   const match = /language-(\w+)/.exec(className || '');
                                   const isInline = !match && !String(children).includes('\n');
                                   return !isInline ? (
-                                    <div className="my-3 rounded-xl overflow-hidden border border-white/[0.07] bg-[#0a0b0e]">
-                                      <div className="flex items-center justify-between px-3.5 py-2 border-b border-white/[0.06] text-[11.5px] text-fg-3">
+                                    <div className="my-3 rounded-xl overflow-hidden border border-line bg-[#07070f]">
+                                      <div className="flex items-center justify-between px-3.5 py-2 border-b border-line text-[11.5px] text-fg-3">
                                         <span className="flex items-center gap-1.5">
                                           <Terminal className="w-3.5 h-3.5" />
                                           {match ? match[1] : 'code'}
@@ -374,7 +381,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 <div className="shrink-0 pt-0.5">
                   <AgentAvatar type={agent.avatarType} avatarUrl={agent.avatarUrl} size="sm" alt={agent.name} />
                 </div>
-                <div className="px-4 py-3 rounded-[20px] rounded-tl-md bg-ink-2 border border-white/[0.06] flex items-center gap-3">
+                <div className="px-4 py-3 rounded-[20px] rounded-tl-md bg-ink-2 border border-line flex items-center gap-3">
                   <span className="flex items-center gap-1">
                     <span className="think-dot" />
                     <span className="think-dot" />
@@ -391,7 +398,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           {/* ---------- Composer ---------- */}
           <div className="px-3 sm:px-8 pb-3 sm:pb-6 pt-2">
             <div
-              className="flex items-end gap-2 p-2 pl-4 rounded-[22px] bg-ink-2 border border-white/[0.08] focus-within:border-white/20 transition-colors"
+              className="flex items-end gap-2 p-2 pl-4 rounded-[22px] bg-ink-2 border border-line focus-within:border-white/20 transition-colors"
               style={{ boxShadow: `0 0 40px -18px ${palette.glow}55` }}
             >
               <textarea
@@ -417,7 +424,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
             <div className="hidden sm:flex items-center justify-between mt-2.5 px-2 text-[11.5px] text-fg-3">
               <span>Enter to send, Shift + Enter for a new line</span>
-              <span>OpenBots, powered by Agnes 2.5 Pro</span>
+              <span>SourceBots, powered by Agnes 2.5 Pro</span>
             </div>
           </div>
         </div>
